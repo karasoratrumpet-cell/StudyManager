@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ポモドーロ ＆ TODOタスクマネージャー</title>
+    <title>StudyManager - ポモドーロ ＆ TODOタスクマネージャー</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
@@ -18,7 +18,7 @@
 
     <nav class="bg-white shadow-sm border-b border-gray-200 px-6 py-3 flex justify-between items-center">
         <h1 class="text-xl font-bold text-indigo-600 flex items-center gap-2">
-            <i class="fa-solid fa-graduation-cap"></i> StudyDesk
+            <i class="fa-solid fa-graduation-cap"></i> StudyManager
         </h1>
         <div id="auth-section">
             <button id="btn-login" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition">
@@ -88,7 +88,7 @@
             </div>
         </div>
 
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 flex flex-col h-[calc(100vh-120px)] min-h-[550px]">
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 flex flex-col h-[calc(100vh-120px)] min-h-[600px]">
             <h3 class="font-bold text-gray-900 mb-4 flex items-center gap-2">
                 <i class="fa-solid fa-list-check text-indigo-500"></i> TODOリスト
             </h3>
@@ -97,7 +97,18 @@
                 <input type="text" id="todo-input" placeholder="新しいタスクを入力..." required
                     class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
                 
-                <div class="flex gap-2 items-center justify-between">
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-[10px] text-gray-400 font-medium mb-0.5">開始日</label>
+                        <input type="date" id="todo-date" required class="w-full text-xs border border-gray-200 p-2 rounded-xl text-gray-600 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] text-gray-400 font-medium mb-0.5">終了日 (同じならデイリー)</label>
+                        <input type="date" id="todo-end-date" required class="w-full text-xs border border-gray-200 p-2 rounded-xl text-gray-600 focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                    </div>
+                </div>
+
+                <div class="flex gap-2 items-center justify-between pt-1">
                     <div class="flex items-center gap-1.5">
                         <span class="text-xs text-gray-500 font-medium">コスト:</span>
                         <div class="flex gap-0.5" id="cost-selector">
@@ -108,9 +119,8 @@
                             <button type="button" data-cost="5" class="cost-star text-gray-300 text-sm"><i class="fa-solid fa-star"></i></button>
                         </div>
                     </div>
-                    <input type="date" id="todo-date" required class="text-xs border border-gray-200 p-1.5 rounded-lg text-gray-600 focus:outline-none focus:ring-1 focus:ring-indigo-500">
-                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-4 py-2 rounded-xl transition shrink-0">
-                        追加
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-5 py-2.5 rounded-xl transition shrink-0 shadow-sm">
+                        タスクを追加
                     </button>
                 </div>
             </form>
@@ -120,7 +130,7 @@
             </div>
         </div>
 
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 lg:p-6 flex flex-col h-[calc(100vh-120px)] min-h-[550px]">
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 lg:p-6 flex flex-col h-[calc(100vh-120px)] min-h-[600px]">
             <h3 class="font-bold text-gray-900 mb-3 flex items-center gap-2">
                 <i class="fa-regular fa-calendar-days text-emerald-500"></i> スケジュールカレンダー
             </h3>
@@ -134,7 +144,7 @@
         import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // --- 1. Firebaseの設定（取得した認証情報を反映） ---
+        // --- 1. Firebaseの設定 ---
         const firebaseConfig = {
             apiKey: "AIzaSyAApuzoBkA8dTXOoPKoFxVvkNXCrRJM-mw",
             authDomain: "studymanager-b3652.firebaseapp.com",
@@ -144,7 +154,6 @@
             appId: "1:705916367748:web:24581f6150a8884d9423d1"
         };
 
-        // Firebaseの初期化
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
@@ -168,7 +177,7 @@
             }
         };
 
-        // アラーム音の生成（外部ファイル不要）
+        // アラーム音の生成
         function playAlarmSound() {
             if (!state.settings.soundOn) return;
             const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -184,8 +193,8 @@
                 osc.start(start);
                 osc.stop(start + duration);
             };
-            playTone(523.25, audioCtx.currentTime, 0.3); // C5
-            playTone(659.25, audioCtx.currentTime + 0.15, 0.4); // E5
+            playTone(523.25, audioCtx.currentTime, 0.3);
+            playTone(659.25, audioCtx.currentTime + 0.15, 0.4);
         }
 
         // --- 3. UI要素の取得 ---
@@ -200,6 +209,7 @@
         const todoForm = document.getElementById('todo-form');
         const todoInput = document.getElementById('todo-input');
         const todoDate = document.getElementById('todo-date');
+        const todoEndDate = document.getElementById('todo-end-date');
         const todoList = document.getElementById('todo-list');
         const costSelector = document.getElementById('cost-selector');
         
@@ -214,7 +224,18 @@
         const userAvatar = document.getElementById('user-avatar');
         const userName = document.getElementById('user-name');
 
-        todoDate.value = new Date().toISOString().split('T')[0];
+        // 日付の初期値を今日に設定
+        const todayToday = new Date().toISOString().split('T')[0];
+        todoDate.value = todayToday;
+        todoEndDate.value = todayToday;
+
+        // 連動して終了日の最低選択可能日を制限
+        todoDate.addEventListener('change', () => {
+            todoEndDate.min = todoDate.value;
+            if (todoEndDate.value < todoDate.value) {
+                todoEndDate.value = todoDate.value;
+            }
+        });
 
         // --- 4. フルカレンダーの初期化 ---
         let calendar;
@@ -233,8 +254,23 @@
         });
         calendar.render();
 
-        // --- 5. データ保存・同期機能 ---
+        // --- 5. 古い完了タスクをクリーンアップする関数 (1日 = 24時間経ったら自動削除) ---
+        function cleanExpiredTodos() {
+            const now = Date.now();
+            const oneDayMs = 24 * 60 * 60 * 1000; // 24時間
+            
+            // 完了してから24時間以上経過したタスクを除外
+            state.todos = state.todos.filter(todo => {
+                if (todo.completed && todo.completedAt) {
+                    return (now - todo.completedAt) < oneDayMs;
+                }
+                return true;
+            });
+        }
+
+        // --- 6. データ保存・同期機能 ---
         async function saveData() {
+            cleanExpiredTodos(); // 保存直前に期限切れをチェック
             if (state.user) {
                 try {
                     await setDoc(doc(db, "users", state.user.uid), {
@@ -271,10 +307,11 @@
                 state.todos = JSON.parse(localStorage.getItem('studydesk_todos')) || [];
                 state.pomodoroCount = parseInt(localStorage.getItem('studydesk_pomo')) || 0;
             }
+            cleanExpiredTodos(); // 読み込み時にもチェック
             render();
         }
 
-        // --- 6. タイマーロジック ---
+        // --- 7. タイマーロジック ---
         function updateTimerDisplay() {
             const m = String(state.timer.minutes).padStart(2, '0');
             const s = String(state.timer.seconds).padStart(2, '0');
@@ -340,7 +377,7 @@
             updateTimerDisplay();
         }
 
-        // --- 7. UIレンダリング ---
+        // --- 8. UIレンダリング ---
         function render() {
             todoList.innerHTML = '';
             
@@ -358,6 +395,9 @@
                         stars += `<i class="fa-solid fa-star text-[10px] ${i <= todo.cost ? 'text-amber-400' : 'text-gray-200'}"></i>`;
                     }
 
+                    // 期間表示の作成
+                    const dateDisplay = todo.date === todo.endDate ? todo.date : `${todo.date} ～ ${todo.endDate}`;
+
                     todoItem.innerHTML = `
                         <div class="flex items-center gap-3 min-w-0 flex-1">
                             <button class="btn-toggle text-xl text-gray-300 hover:text-indigo-600 transition shrink-0">
@@ -366,7 +406,9 @@
                             <div class="min-w-0 flex-1">
                                 <p class="text-sm font-medium ${todo.completed ? 'line-through text-gray-400' : 'text-gray-700'} break-words">${escapeHTML(todo.text)}</p>
                                 <div class="flex items-center gap-2 mt-0.5">
-                                    <span class="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-500 font-mono">${todo.date}</span>
+                                    <span class="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-500 font-mono flex items-center gap-1">
+                                        <i class="fa-regular fa-calendar text-[9px]"></i> ${dateDisplay}
+                                    </span>
                                     <div class="flex">${stars}</div>
                                 </div>
                             </div>
@@ -382,9 +424,9 @@
                 });
             }
 
-            // 進捗の計算
+            // 進捗の計算 (今日やるべきタスクを基準にする)
             const todayStr = new Date().toISOString().split('T')[0];
-            const todayTodos = state.todos.filter(t => t.date === todayStr);
+            const todayTodos = state.todos.filter(t => todayStr >= t.date && todayStr <= t.endDate);
             const todayCompleted = todayTodos.filter(t => t.completed).length;
             
             const totalCompleted = state.todos.filter(t => t.completed).length;
@@ -395,38 +437,57 @@
             progressBar.style.width = `${percent}%`;
             progressPercent.textContent = `${percent}%`;
 
-            // カレンダー同期
-            const calendarEvents = state.todos.map(todo => ({
-                id: todo.id,
-                title: `${'★'.repeat(todo.cost)} ${todo.text}`,
-                start: todo.date,
-                allDay: true,
-                backgroundColor: todo.completed ? '#9ca3af' : '#6366f1',
-                borderColor: todo.completed ? '#9ca3af' : '#6366f1',
-                textColor: '#ffffff'
-            }));
+            // カレンダー同期 (複数日対応)
+            const calendarEvents = state.todos.map(todo => {
+                // フルカレンダーの「終了日」は、その日の00:00までとして扱われるため、
+                // 画面上で正しくその日まで帯を伸ばすために+1日加算する処理を行います。
+                let end = new Date(todo.endDate);
+                end.setDate(end.getDate() + 1);
+                const endDateStr = end.toISOString().split('T')[0];
+
+                return {
+                    id: todo.id,
+                    title: `${'★'.repeat(todo.cost)} ${todo.text}`,
+                    start: todo.date,
+                    end: endDateStr,
+                    allDay: true,
+                    backgroundColor: todo.completed ? '#9ca3af' : '#6366f1',
+                    borderColor: todo.completed ? '#9ca3af' : '#6366f1',
+                    textColor: '#ffffff'
+                };
+            });
             
             calendar.removeAllEvents();
             calendar.addEventSource(calendarEvents);
         }
 
-        // --- 8. タスク操作ロジック ---
-        function addTodo(text, date, cost) {
+        // --- 9. タスク操作ロジック ---
+        function addTodo(text, date, endDate, cost) {
             const newTodo = {
                 id: Date.now().toString(),
                 text: text,
                 date: date,
+                endDate: endDate,
                 cost: cost,
-                completed: false
+                completed: false,
+                completedAt: null // 完了時刻を記録する用
             };
             state.todos.push(newTodo);
             saveData();
         }
 
         function toggleTodo(id) {
-            state.todos = state.todos.map(todo => 
-                todo.id === id ? { ...todo, completed: !todo.completed } : todo
-            );
+            state.todos = state.todos.map(todo => {
+                if (todo.id === id) {
+                    const isNowCompleted = !todo.completed;
+                    return { 
+                        ...todo, 
+                        completed: isNowCompleted,
+                        completedAt: isNowCompleted ? Date.now() : null // 完了した瞬間のタイムスタンプを保存
+                    };
+                }
+                return todo;
+            });
             saveData();
         }
 
@@ -459,7 +520,7 @@
         todoForm.addEventListener('submit', (e) => {
             e.preventDefault();
             if (!todoInput.value.trim()) return;
-            addTodo(todoInput.value.trim(), todoDate.value, state.settings.currentCost);
+            addTodo(todoInput.value.trim(), todoDate.value, todoEndDate.value, state.settings.currentCost);
             todoInput.value = '';
         });
 
@@ -484,13 +545,13 @@
             );
         }
 
-        // --- 9. 認証 (Auth) 制御 ---
+        // --- 10. 認証 (Auth) 制御 ---
         btnLogin.addEventListener('click', async () => {
             try {
                 await signInWithPopup(auth, provider);
             } catch (e) {
                 console.error("ログインエラー: ", e);
-                alert("Googleログインに失敗しました。認証プロバイダが有効になっているか確認してください。");
+                alert("Googleログインに失敗しました。認証プロバイダやリクエスト元ドメインの設定を確認してください。");
             }
         });
 
@@ -512,6 +573,14 @@
             }
             loadData();
         });
+
+        // 定期的に古い完了タスクをクリーンアップ（1分おき）
+        setInterval(() => {
+            if (state.todos.some(t => t.completed)) {
+                cleanExpiredTodos();
+                render();
+            }
+        }, 60000);
     </script>
 </body>
 </html>
