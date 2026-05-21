@@ -12,6 +12,9 @@
         .fc-theme-standard td, .fc-theme-standard th { border-color: #e5e7eb; }
         .fc .fc-button-primary { background-color: #3b82f6; border-color: #3b82f6; }
         .fc .fc-button-primary:hover { background-color: #2563eb; border-color: #2563eb; }
+        /* カレンダー表示切り替えボタンのスタイル微調整 */
+        .fc .fc-toolbar-title { font-size: 1.25rem !important; font-weight: 700; }
+        .fc .fc-button { font-size: 0.75rem !important; padding: 0.4rem 0.8rem !important; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans">
@@ -37,37 +40,31 @@
         <div class="space-y-6">
             <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 text-center">
                 <div class="flex justify-between items-center mb-4">
-                    <span id="timer-status" class="text-xs font-bold uppercase tracking-wider bg-red-100 text-red-700 px-3 py-1 rounded-full">
-                        集中時間 (25分)
-                    </span>
+                    <span id="timer-status" class="text-xs font-bold uppercase tracking-wider bg-red-100 text-red-700 px-3 py-1 rounded-full">集中 (25分)</span>
                     <button id="btn-sound-toggle" class="text-gray-500 hover:text-indigo-600 transition text-lg">
                         <i id="sound-icon" class="fa-solid fa-volume-high"></i>
                     </button>
                 </div>
-                
                 <div id="timer-display" class="text-6xl font-mono font-bold text-gray-900 my-6">25:00</div>
-                
                 <div class="flex justify-center gap-3">
                     <button id="btn-timer-start" class="bg-red-500 hover:bg-red-600 text-white font-medium px-6 py-2.5 rounded-xl transition flex items-center gap-2 w-28 justify-center">
-                        <i class="fa-solid fa-play"></i> スタート
+                        <i class="fa-solid fa-play"></i> 開始
                     </button>
                     <button id="btn-timer-pause" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium px-6 py-2.5 rounded-xl transition flex items-center gap-2 w-28 justify-center hidden">
                         <i class="fa-solid fa-pause"></i> 一時停止
                     </button>
-                    <button id="btn-timer-reset" class="bg-gray-100 hover:bg-gray-200 text-gray-500 font-medium px-4 py-2.5 rounded-xl transition">
-                        リセット
-                    </button>
+                    <button id="btn-timer-reset" class="bg-gray-100 hover:bg-gray-200 text-gray-500 font-medium px-4 py-2.5 rounded-xl transition">リセット</button>
                 </div>
             </div>
 
             <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
                 <h3 class="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <i class="fa-solid fa-fire text-orange-500"></i> 本日の進捗
+                    <i class="fa-solid fa-fire text-orange-500"></i> 今日の進捗
                 </h3>
                 <div class="space-y-4">
                     <div>
                         <div class="flex justify-between text-sm mb-1">
-                            <span class="text-gray-500">タスク完了率</span>
+                            <span class="text-gray-500">完了率</span>
                             <span id="progress-percent" class="font-semibold text-indigo-600">0%</span>
                         </div>
                         <div class="w-full bg-gray-100 h-2.5 rounded-full overflow-hidden">
@@ -75,12 +72,12 @@
                         </div>
                     </div>
                     <div class="grid grid-cols-2 gap-3 pt-2">
-                        <div class="bg-gray-50 p-3 rounded-xl border border-gray-100">
-                            <div class="text-xs text-gray-400 font-medium">完了タスク</div>
+                        <div class="bg-gray-50 p-3 rounded-xl border border-gray-100 text-center">
+                            <div class="text-xs text-gray-400 font-medium">累計完了</div>
                             <div id="stat-completed" class="text-xl font-bold text-gray-800 mt-1">0</div>
                         </div>
-                        <div class="bg-gray-50 p-3 rounded-xl border border-gray-100">
-                            <div class="text-xs text-gray-400 font-medium">総ポモドーロ</div>
+                        <div class="bg-gray-50 p-3 rounded-xl border border-gray-100 text-center">
+                            <div class="text-xs text-gray-400 font-medium">ポモドーロ</div>
                             <div id="stat-pomodoros" class="text-xl font-bold text-gray-800 mt-1">0</div>
                         </div>
                     </div>
@@ -92,25 +89,20 @@
             <h3 class="font-bold text-gray-900 mb-4 flex items-center gap-2">
                 <i class="fa-solid fa-list-check text-indigo-500"></i> TODOリスト
             </h3>
-            
             <form id="todo-form" class="space-y-3 mb-4">
-                <input type="text" id="todo-input" placeholder="新しいタスクを入力..." required
-                    class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
-                
+                <input type="text" id="todo-input" placeholder="タスクを入力..." required class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
                 <div class="grid grid-cols-2 gap-2">
                     <div>
                         <label class="block text-[10px] text-gray-400 font-medium mb-0.5">開始日</label>
                         <input type="date" id="todo-date" required class="w-full text-xs border border-gray-200 p-2 rounded-xl text-gray-600 focus:outline-none focus:ring-1 focus:ring-indigo-500">
                     </div>
                     <div>
-                        <label class="block text-[10px] text-gray-400 font-medium mb-0.5">終了日 (同じならデイリー)</label>
+                        <label class="block text-[10px] text-gray-400 font-medium mb-0.5">終了日</label>
                         <input type="date" id="todo-end-date" required class="w-full text-xs border border-gray-200 p-2 rounded-xl text-gray-600 focus:outline-none focus:ring-1 focus:ring-indigo-500">
                     </div>
                 </div>
-
                 <div class="flex gap-2 items-center justify-between pt-1">
                     <div class="flex items-center gap-1.5">
-                        <span class="text-xs text-gray-500 font-medium">コスト:</span>
                         <div class="flex gap-0.5" id="cost-selector">
                             <button type="button" data-cost="1" class="cost-star text-amber-400 text-sm"><i class="fa-solid fa-star"></i></button>
                             <button type="button" data-cost="2" class="cost-star text-gray-300 text-sm"><i class="fa-solid fa-star"></i></button>
@@ -119,12 +111,9 @@
                             <button type="button" data-cost="5" class="cost-star text-gray-300 text-sm"><i class="fa-solid fa-star"></i></button>
                         </div>
                     </div>
-                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-5 py-2.5 rounded-xl transition shrink-0 shadow-sm">
-                        タスクを追加
-                    </button>
+                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-5 py-2.5 rounded-xl transition shadow-sm">タスクを追加</button>
                 </div>
             </form>
-
             <div id="todo-list" class="flex-1 overflow-y-auto space-y-2 pr-1">
                 <p class="text-center text-gray-400 text-xs py-8">タスクがありません</p>
             </div>
@@ -132,11 +121,10 @@
 
         <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 lg:p-6 flex flex-col h-[calc(100vh-120px)] min-h-[600px]">
             <h3 class="font-bold text-gray-900 mb-3 flex items-center gap-2">
-                <i class="fa-regular fa-calendar-days text-emerald-500"></i> スケジュールカレンダー
+                <i class="fa-regular fa-calendar-days text-emerald-500"></i> カレンダー
             </h3>
             <div id="calendar" class="text-xs flex-1"></div>
         </div>
-
     </main>
 
     <script type="module">
@@ -144,7 +132,6 @@
         import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // --- 1. Firebaseの設定 ---
         const firebaseConfig = {
             apiKey: "AIzaSyAApuzoBkA8dTXOoPKoFxVvkNXCrRJM-mw",
             authDomain: "studymanager-b3652.firebaseapp.com",
@@ -159,25 +146,14 @@
         const db = getFirestore(app);
         const provider = new GoogleAuthProvider();
 
-        // --- 2. アプリケーションの状態管理 (State) ---
         let state = {
             user: null,
             todos: [],
             pomodoroCount: 0,
-            settings: {
-                soundOn: true,
-                currentCost: 1
-            },
-            timer: {
-                minutes: 25,
-                seconds: 0,
-                isBreak: false,
-                isRunning: false,
-                intervalId: null
-            }
+            settings: { soundOn: true, currentCost: 1 },
+            timer: { minutes: 25, seconds: 0, isBreak: false, isRunning: false, intervalId: null }
         };
 
-        // アラーム音の生成
         function playAlarmSound() {
             if (!state.settings.soundOn) return;
             const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -197,7 +173,6 @@
             playTone(659.25, audioCtx.currentTime + 0.15, 0.4);
         }
 
-        // --- 3. UI要素の取得 ---
         const timerDisplay = document.getElementById('timer-display');
         const timerStatus = document.getElementById('timer-status');
         const btnTimerStart = document.getElementById('btn-timer-start');
@@ -205,81 +180,74 @@
         const btnTimerReset = document.getElementById('btn-timer-reset');
         const btnSoundToggle = document.getElementById('btn-sound-toggle');
         const soundIcon = document.getElementById('sound-icon');
-        
         const todoForm = document.getElementById('todo-form');
         const todoInput = document.getElementById('todo-input');
         const todoDate = document.getElementById('todo-date');
         const todoEndDate = document.getElementById('todo-end-date');
         const todoList = document.getElementById('todo-list');
         const costSelector = document.getElementById('cost-selector');
-        
         const progressBar = document.getElementById('progress-bar');
         const progressPercent = document.getElementById('progress-percent');
         const statCompleted = document.getElementById('stat-completed');
         const statPomodoros = document.getElementById('stat-pomodoros');
-
         const btnLogin = document.getElementById('btn-login');
         const btnLogout = document.getElementById('btn-logout');
         const userProfile = document.getElementById('user-profile');
         const userAvatar = document.getElementById('user-avatar');
         const userName = document.getElementById('user-name');
 
-        // 日付の初期値を今日に設定
-        const todayToday = new Date().toISOString().split('T')[0];
-        todoDate.value = todayToday;
-        todoEndDate.value = todayToday;
-
-        // 連動して終了日の最低選択可能日を制限
+        const todayInit = new Date().toISOString().split('T')[0];
+        todoDate.value = todayInit;
+        todoEndDate.value = todayInit;
         todoDate.addEventListener('change', () => {
             todoEndDate.min = todoDate.value;
-            if (todoEndDate.value < todoDate.value) {
-                todoEndDate.value = todoDate.value;
-            }
+            if (todoEndDate.value < todoDate.value) todoEndDate.value = todoDate.value;
         });
 
-        // --- 4. フルカレンダーの初期化 ---
+        // --- 4. カレンダー初期化 (週表示・月表示を追加) ---
         let calendar;
         const calendarEl = document.getElementById('calendar');
         calendar = new FullCalendar.Calendar(calendarEl, {
             initialView: 'dayGridMonth',
             locale: 'ja',
-            headerToolbar: { left: 'prev,next', center: 'title', right: 'today' },
+            headerToolbar: { 
+                left: 'prev,next today', 
+                center: 'title', 
+                right: 'dayGridMonth,dayGridWeek' // ここで月表示と週表示を切り替え
+            },
+            buttonText: {
+                month: '月',
+                week: '週',
+                today: '今日'
+            },
             editable: true,
             events: [],
             eventClick: function(info) {
-                if(confirm(`タスク「${info.event.title.replace(/★+/g, '').trim()}」を完了/未完了に切り替えますか？`)) {
+                if(confirm(`タスク「${info.event.title.replace(/★+/g, '').trim()}」を切り替えますか？`)) {
                     toggleTodo(info.event.id);
                 }
             }
         });
         calendar.render();
 
-        // --- 5. 古い完了タスクをクリーンアップする関数 (1日 = 24時間経ったら自動削除) ---
         function cleanExpiredTodos() {
             const now = Date.now();
-            const oneDayMs = 24 * 60 * 60 * 1000; // 24時間
-            
-            // 完了してから24時間以上経過したタスクを除外
+            const oneDayMs = 24 * 60 * 60 * 1000;
             state.todos = state.todos.filter(todo => {
-                if (todo.completed && todo.completedAt) {
-                    return (now - todo.completedAt) < oneDayMs;
-                }
+                if (todo.completed && todo.completedAt) return (now - todo.completedAt) < oneDayMs;
                 return true;
             });
         }
 
-        // --- 6. データ保存・同期機能 ---
         async function saveData() {
-            cleanExpiredTodos(); // 保存直前に期限切れをチェック
+            cleanExpiredTodos();
             if (state.user) {
                 try {
                     await setDoc(doc(db, "users", state.user.uid), {
                         todos: state.todos,
                         pomodoroCount: state.pomodoroCount
                     });
-                } catch (e) {
-                    console.error("Firestoreへの保存に失敗しました: ", e);
-                }
+                } catch (e) { console.error("Save Error: ", e); }
             } else {
                 localStorage.setItem('studydesk_todos', JSON.stringify(state.todos));
                 localStorage.setItem('studydesk_pomo', state.pomodoroCount);
@@ -296,22 +264,16 @@
                         const data = docSnap.data();
                         state.todos = data.todos || [];
                         state.pomodoroCount = data.pomodoroCount || 0;
-                    } else {
-                        state.todos = [];
-                        state.pomodoroCount = 0;
-                    }
-                } catch (e) {
-                    console.error("Firestoreからの読み込みに失敗しました: ", e);
-                }
+                    } else { state.todos = []; state.pomodoroCount = 0; }
+                } catch (e) { console.error("Load Error: ", e); }
             } else {
                 state.todos = JSON.parse(localStorage.getItem('studydesk_todos')) || [];
                 state.pomodoroCount = parseInt(localStorage.getItem('studydesk_pomo')) || 0;
             }
-            cleanExpiredTodos(); // 読み込み時にもチェック
+            cleanExpiredTodos();
             render();
         }
 
-        // --- 7. タイマーロジック ---
         function updateTimerDisplay() {
             const m = String(state.timer.minutes).padStart(2, '0');
             const s = String(state.timer.seconds).padStart(2, '0');
@@ -323,81 +285,57 @@
             state.timer.isRunning = true;
             btnTimerStart.classList.add('hidden');
             btnTimerPause.classList.remove('hidden');
-
             state.timer.intervalId = setInterval(() => {
                 if (state.timer.seconds === 0) {
                     if (state.timer.minutes === 0) {
                         clearInterval(state.timer.intervalId);
                         state.timer.isRunning = false;
                         playAlarmSound();
-
                         if (!state.timer.isBreak) {
                             state.pomodoroCount++;
-                            state.timer.isBreak = true;
-                            state.timer.minutes = 5;
-                            timerStatus.textContent = "休憩時間 (5分)";
-                            timerStatus.className = "text-xs font-bold uppercase tracking-wider bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full";
+                            state.timer.isBreak = true; state.timer.minutes = 5;
+                            timerStatus.textContent = "休憩 (5分)";
+                            timerStatus.className = "text-xs font-bold uppercase bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full";
                         } else {
-                            state.timer.isBreak = false;
-                            state.timer.minutes = 25;
-                            timerStatus.textContent = "集中時間 (25分)";
-                            timerStatus.className = "text-xs font-bold uppercase tracking-wider bg-red-100 text-red-700 px-3 py-1 rounded-full";
+                            state.timer.isBreak = false; state.timer.minutes = 25;
+                            timerStatus.textContent = "集中 (25分)";
+                            timerStatus.className = "text-xs font-bold uppercase bg-red-100 text-red-700 px-3 py-1 rounded-full";
                         }
-                        btnTimerStart.classList.remove('hidden');
-                        btnTimerPause.classList.add('hidden');
-                        saveData();
-                        return;
+                        btnTimerStart.classList.remove('hidden'); btnTimerPause.classList.add('hidden');
+                        saveData(); return;
                     }
-                    state.timer.minutes--;
-                    state.timer.seconds = 59;
-                } else {
-                    state.timer.seconds--;
-                }
+                    state.timer.minutes--; state.timer.seconds = 59;
+                } else state.timer.seconds--;
                 updateTimerDisplay();
             }, 1000);
         }
 
         function pauseTimer() {
-            clearInterval(state.timer.intervalId);
-            state.timer.isRunning = false;
-            btnTimerStart.classList.remove('hidden');
-            btnTimerPause.classList.add('hidden');
+            clearInterval(state.timer.intervalId); state.timer.isRunning = false;
+            btnTimerStart.classList.remove('hidden'); btnTimerPause.classList.add('hidden');
         }
 
         function resetTimer() {
-            clearInterval(state.timer.intervalId);
-            state.timer.isRunning = false;
-            state.timer.isBreak = false;
-            state.timer.minutes = 25;
-            state.timer.seconds = 0;
-            timerStatus.textContent = "集中時間 (25分)";
-            timerStatus.className = "text-xs font-bold uppercase tracking-wider bg-red-100 text-red-700 px-3 py-1 rounded-full";
-            btnTimerStart.classList.remove('hidden');
-            btnTimerPause.classList.add('hidden');
+            clearInterval(state.timer.intervalId); state.timer.isRunning = false;
+            state.timer.isBreak = false; state.timer.minutes = 25; state.timer.seconds = 0;
+            timerStatus.textContent = "集中 (25分)";
+            timerStatus.className = "text-xs font-bold uppercase bg-red-100 text-red-700 px-3 py-1 rounded-full";
+            btnTimerStart.classList.remove('hidden'); btnTimerPause.classList.add('hidden');
             updateTimerDisplay();
         }
 
-        // --- 8. UIレンダリング ---
         function render() {
             todoList.innerHTML = '';
-            
             if (state.todos.length === 0) {
                 todoList.innerHTML = `<p class="text-center text-gray-400 text-xs py-8">タスクがありません</p>`;
             } else {
                 const sortedTodos = [...state.todos].sort((a,b) => new Date(a.date) - new Date(b.date) || a.completed - b.completed);
-                
                 sortedTodos.forEach(todo => {
                     const todoItem = document.createElement('div');
                     todoItem.className = `flex items-center justify-between p-3 rounded-xl border transition ${todo.completed ? 'bg-gray-50 border-gray-100 opacity-60' : 'bg-white border-gray-200 shadow-sm'}`;
-                    
                     let stars = '';
-                    for(let i=1; i<=5; i++) {
-                        stars += `<i class="fa-solid fa-star text-[10px] ${i <= todo.cost ? 'text-amber-400' : 'text-gray-200'}"></i>`;
-                    }
-
-                    // 期間表示の作成
-                    const dateDisplay = todo.date === todo.endDate ? todo.date : `${todo.date} ～ ${todo.endDate}`;
-
+                    for(let i=1; i<=5; i++) stars += `<i class="fa-solid fa-star text-[10px] ${i <= todo.cost ? 'text-amber-400' : 'text-gray-200'}"></i>`;
+                    const dateDisp = todo.date === todo.endDate ? todo.date : `${todo.date} ～ ${todo.endDate}`;
                     todoItem.innerHTML = `
                         <div class="flex items-center gap-3 min-w-0 flex-1">
                             <button class="btn-toggle text-xl text-gray-300 hover:text-indigo-600 transition shrink-0">
@@ -406,73 +344,33 @@
                             <div class="min-w-0 flex-1">
                                 <p class="text-sm font-medium ${todo.completed ? 'line-through text-gray-400' : 'text-gray-700'} break-words">${escapeHTML(todo.text)}</p>
                                 <div class="flex items-center gap-2 mt-0.5">
-                                    <span class="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-500 font-mono flex items-center gap-1">
-                                        <i class="fa-regular fa-calendar text-[9px]"></i> ${dateDisplay}
-                                    </span>
+                                    <span class="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-500 font-mono flex items-center gap-1"><i class="fa-regular fa-calendar text-[9px]"></i> ${dateDisp}</span>
                                     <div class="flex">${stars}</div>
                                 </div>
                             </div>
                         </div>
-                        <button class="btn-delete text-gray-300 hover:text-red-500 p-1 transition ml-2 shrink-0">
-                            <i class="fa-regular fa-trash-can"></i>
-                        </button>
-                    `;
-
+                        <button class="btn-delete text-gray-300 hover:text-red-500 p-1 transition ml-2 shrink-0"><i class="fa-regular fa-trash-can"></i></button>`;
                     todoItem.querySelector('.btn-toggle').addEventListener('click', () => toggleTodo(todo.id));
                     todoItem.querySelector('.btn-delete').addEventListener('click', () => deleteTodo(todo.id));
                     todoList.appendChild(todoItem);
                 });
             }
-
-            // 進捗の計算 (今日やるべきタスクを基準にする)
             const todayStr = new Date().toISOString().split('T')[0];
             const todayTodos = state.todos.filter(t => todayStr >= t.date && todayStr <= t.endDate);
             const todayCompleted = todayTodos.filter(t => t.completed).length;
-            
-            const totalCompleted = state.todos.filter(t => t.completed).length;
-            statCompleted.textContent = totalCompleted;
+            statCompleted.textContent = state.todos.filter(t => t.completed).length;
             statPomodoros.textContent = state.pomodoroCount;
-
             const percent = todayTodos.length > 0 ? Math.round((todayCompleted / todayTodos.length) * 100) : 0;
-            progressBar.style.width = `${percent}%`;
-            progressPercent.textContent = `${percent}%`;
-
-            // カレンダー同期 (複数日対応)
+            progressBar.style.width = `${percent}%`; progressPercent.textContent = `${percent}%`;
             const calendarEvents = state.todos.map(todo => {
-                // フルカレンダーの「終了日」は、その日の00:00までとして扱われるため、
-                // 画面上で正しくその日まで帯を伸ばすために+1日加算する処理を行います。
-                let end = new Date(todo.endDate);
-                end.setDate(end.getDate() + 1);
-                const endDateStr = end.toISOString().split('T')[0];
-
-                return {
-                    id: todo.id,
-                    title: `${'★'.repeat(todo.cost)} ${todo.text}`,
-                    start: todo.date,
-                    end: endDateStr,
-                    allDay: true,
-                    backgroundColor: todo.completed ? '#9ca3af' : '#6366f1',
-                    borderColor: todo.completed ? '#9ca3af' : '#6366f1',
-                    textColor: '#ffffff'
-                };
+                let end = new Date(todo.endDate); end.setDate(end.getDate() + 1);
+                return { id: todo.id, title: `${'★'.repeat(todo.cost)} ${todo.text}`, start: todo.date, end: end.toISOString().split('T')[0], allDay: true, backgroundColor: todo.completed ? '#9ca3af' : '#6366f1', borderColor: todo.completed ? '#9ca3af' : '#6366f1', textColor: '#ffffff' };
             });
-            
-            calendar.removeAllEvents();
-            calendar.addEventSource(calendarEvents);
+            calendar.removeAllEvents(); calendar.addEventSource(calendarEvents);
         }
 
-        // --- 9. タスク操作ロジック ---
         function addTodo(text, date, endDate, cost) {
-            const newTodo = {
-                id: Date.now().toString(),
-                text: text,
-                date: date,
-                endDate: endDate,
-                cost: cost,
-                completed: false,
-                completedAt: null // 完了時刻を記録する用
-            };
-            state.todos.push(newTodo);
+            state.todos.push({ id: Date.now().toString(), text, date, endDate, cost, completed: false, completedAt: null });
             saveData();
         }
 
@@ -480,11 +378,7 @@
             state.todos = state.todos.map(todo => {
                 if (todo.id === id) {
                     const isNowCompleted = !todo.completed;
-                    return { 
-                        ...todo, 
-                        completed: isNowCompleted,
-                        completedAt: isNowCompleted ? Date.now() : null // 完了した瞬間のタイムスタンプを保存
-                    };
+                    return { ...todo, completed: isNowCompleted, completedAt: isNowCompleted ? Date.now() : null };
                 }
                 return todo;
             });
@@ -492,95 +386,43 @@
         }
 
         function deleteTodo(id) {
-            if(confirm("このタスクを削除しますか？")) {
-                state.todos = state.todos.filter(todo => todo.id !== id);
-                saveData();
-            }
+            if(confirm("削除しますか？")) { state.todos = state.todos.filter(todo => todo.id !== id); saveData(); }
         }
 
-        // コストセレクター
         costSelector.querySelectorAll('button').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const selectedCost = parseInt(e.currentTarget.getAttribute('data-cost'));
-                state.settings.currentCost = selectedCost;
-                
+                state.settings.currentCost = parseInt(e.currentTarget.getAttribute('data-cost'));
                 costSelector.querySelectorAll('button').forEach(b => {
-                    const bCost = parseInt(b.getAttribute('data-cost'));
-                    if (bCost <= selectedCost) {
-                        b.classList.remove('text-gray-300');
-                        b.classList.add('text-amber-400');
-                    } else {
-                        b.classList.remove('text-amber-400');
-                        b.classList.add('text-gray-300');
-                    }
+                    if (parseInt(b.getAttribute('data-cost')) <= state.settings.currentCost) { b.classList.remove('text-gray-300'); b.classList.add('text-amber-400'); }
+                    else { b.classList.remove('text-amber-400'); b.classList.add('text-gray-300'); }
                 });
             });
         });
 
         todoForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            if (!todoInput.value.trim()) return;
+            e.preventDefault(); if (!todoInput.value.trim()) return;
             addTodo(todoInput.value.trim(), todoDate.value, todoEndDate.value, state.settings.currentCost);
             todoInput.value = '';
         });
 
-        btnTimerStart.addEventListener('click', startTimer);
-        btnTimerPause.addEventListener('click', pauseTimer);
-        btnTimerReset.addEventListener('click', resetTimer);
-        
+        btnTimerStart.addEventListener('click', startTimer); btnTimerPause.addEventListener('click', pauseTimer); btnTimerReset.addEventListener('click', resetTimer);
         btnSoundToggle.addEventListener('click', () => {
             state.settings.soundOn = !state.settings.soundOn;
-            if(state.settings.soundOn) {
-                soundIcon.className = "fa-solid fa-volume-high";
-                btnSoundToggle.className = "text-gray-500 hover:text-indigo-600 transition text-lg";
-            } else {
-                soundIcon.className = "fa-solid fa-volume-xmark";
-                btnSoundToggle.className = "text-red-400 hover:text-red-500 transition text-lg";
-            }
+            soundIcon.className = state.settings.soundOn ? "fa-solid fa-volume-high" : "fa-solid fa-volume-xmark";
         });
 
-        function escapeHTML(str) {
-            return str.replace(/[&<>'"]/g, 
-                tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
-            );
-        }
+        function escapeHTML(str) { return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)); }
 
-        // --- 10. 認証 (Auth) 制御 ---
         btnLogin.addEventListener('click', async () => {
-            try {
-                await signInWithPopup(auth, provider);
-            } catch (e) {
-                console.error("ログインエラー: ", e);
-                alert("Googleログインに失敗しました。認証プロバイダやリクエスト元ドメインの設定を確認してください。");
-            }
+            try { await signInWithPopup(auth, provider); } catch (e) { alert("ログインに失敗しました。Firebaseの設定（承認済みドメイン）を確認してください。"); }
         });
-
-        btnLogout.addEventListener('click', () => {
-            signOut(auth);
-        });
-
+        btnLogout.addEventListener('click', () => signOut(auth));
         onAuthStateChanged(auth, (user) => {
-            if (user) {
-                state.user = user;
-                userName.textContent = user.displayName;
-                userAvatar.src = user.photoURL;
-                btnLogin.classList.add('hidden');
-                userProfile.classList.remove('hidden');
-            } else {
-                state.user = null;
-                btnLogin.classList.remove('hidden');
-                userProfile.classList.add('hidden');
-            }
+            if (user) { state.user = user; userName.textContent = user.displayName; userAvatar.src = user.photoURL; btnLogin.classList.add('hidden'); userProfile.classList.remove('hidden'); }
+            else { state.user = null; btnLogin.classList.remove('hidden'); userProfile.classList.add('hidden'); }
             loadData();
         });
-
-        // 定期的に古い完了タスクをクリーンアップ（1分おき）
-        setInterval(() => {
-            if (state.todos.some(t => t.completed)) {
-                cleanExpiredTodos();
-                render();
-            }
-        }, 60000);
+        setInterval(() => { if (state.todos.some(t => t.completed)) { cleanExpiredTodos(); render(); } }, 60000);
     </script>
 </body>
 </html>
