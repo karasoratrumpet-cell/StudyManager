@@ -4,11 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ポモドーロ ＆ TODOタスクマネージャー</title>
-    <!-- Tailwind CSS for UI styling -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- FullCalendar CSS & JS -->
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
     <style>
@@ -19,7 +16,6 @@
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans">
 
-    <!-- ナビゲーションバー -->
     <nav class="bg-white shadow-sm border-b border-gray-200 px-6 py-3 flex justify-between items-center">
         <h1 class="text-xl font-bold text-indigo-600 flex items-center gap-2">
             <i class="fa-solid fa-graduation-cap"></i> StudyDesk
@@ -38,9 +34,7 @@
 
     <main class="max-w-7xl mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        <!-- 左カラム: ポモドーロタイマー & 毎日続ける進捗 -->
         <div class="space-y-6">
-            <!-- ポモドーロタイマー -->
             <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 text-center">
                 <div class="flex justify-between items-center mb-4">
                     <span id="timer-status" class="text-xs font-bold uppercase tracking-wider bg-red-100 text-red-700 px-3 py-1 rounded-full">
@@ -66,7 +60,6 @@
                 </div>
             </div>
 
-            <!-- 毎日の進捗 (習慣・統計) -->
             <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
                 <h3 class="font-bold text-gray-900 mb-4 flex items-center gap-2">
                     <i class="fa-solid fa-fire text-orange-500"></i> 本日の進捗
@@ -78,7 +71,7 @@
                             <span id="progress-percent" class="font-semibold text-indigo-600">0%</span>
                         </div>
                         <div class="w-full bg-gray-100 h-2.5 rounded-full overflow-hidden">
-                            <div id="progress-bar" class="bg-indigo-600 h-full transition-all duration-500物" style="width: 0%"></div>
+                            <div id="progress-bar" class="bg-indigo-600 h-full transition-all duration-500" style="width: 0%"></div>
                         </div>
                     </div>
                     <div class="grid grid-cols-2 gap-3 pt-2">
@@ -95,13 +88,11 @@
             </div>
         </div>
 
-        <!-- 中央カラム: TODOリスト (5段階コスト付き) -->
         <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 flex flex-col h-[calc(100vh-120px)] min-h-[550px]">
             <h3 class="font-bold text-gray-900 mb-4 flex items-center gap-2">
                 <i class="fa-solid fa-list-check text-indigo-500"></i> TODOリスト
             </h3>
             
-            <!-- タスク追加フォーム -->
             <form id="todo-form" class="space-y-3 mb-4">
                 <input type="text" id="todo-input" placeholder="新しいタスクを入力..." required
                     class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
@@ -110,7 +101,6 @@
                     <div class="flex items-center gap-1.5">
                         <span class="text-xs text-gray-500 font-medium">コスト:</span>
                         <div class="flex gap-0.5" id="cost-selector">
-                            <!-- 1〜5のコストボタン -->
                             <button type="button" data-cost="1" class="cost-star text-amber-400 text-sm"><i class="fa-solid fa-star"></i></button>
                             <button type="button" data-cost="2" class="cost-star text-gray-300 text-sm"><i class="fa-solid fa-star"></i></button>
                             <button type="button" data-cost="3" class="cost-star text-gray-300 text-sm"><i class="fa-solid fa-star"></i></button>
@@ -125,14 +115,11 @@
                 </div>
             </form>
 
-            <!-- タスク一覧 (スクロール可能) -->
             <div id="todo-list" class="flex-1 overflow-y-auto space-y-2 pr-1">
-                <!-- 動的に生成されます -->
                 <p class="text-center text-gray-400 text-xs py-8">タスクがありません</p>
             </div>
         </div>
 
-        <!-- 右カラム: カレンダー機能 -->
         <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 lg:p-6 flex flex-col h-[calc(100vh-120px)] min-h-[550px]">
             <h3 class="font-bold text-gray-900 mb-3 flex items-center gap-2">
                 <i class="fa-regular fa-calendar-days text-emerald-500"></i> スケジュールカレンダー
@@ -142,39 +129,26 @@
 
     </main>
 
-    <!-- Firebase SDKの読み込み (Modular形式) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // --- 1. Firebaseの設定設定 ---
-        // GitHub公開時はここにあなたのFirebaseプロジェクトの認証情報を貼り付けます。
-        // 未設定時は自動的にブラウザのLocalStorageに保存するフォールバック機能が付いています。
+        // --- 1. Firebaseの設定（取得した認証情報を反映） ---
         const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_AUTH_DOMAIN",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_STORAGE_BUCKET",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID"
+            apiKey: "AIzaSyAApuzoBkA8dTXOoPKoFxVvkNXCrRJM-mw",
+            authDomain: "studymanager-b3652.firebaseapp.com",
+            projectId: "studymanager-b3652",
+            storageBucket: "studymanager-b3652.firebasestorage.app",
+            messagingSenderId: "705916367748",
+            appId: "1:705916367748:web:24581f6150a8884d9423d1"
         };
 
-        // Firebaseの初期化チェック
-        let app, auth, db, provider;
-        let isFirebaseActive = false;
-
-        if (firebaseConfig.apiKey !== "YOUR_API_KEY") {
-            try {
-                app = initializeApp(firebaseConfig);
-                auth = getAuth(app);
-                db = getFirestore(app);
-                provider = new GoogleAuthProvider();
-                isFirebaseActive = true;
-            } catch (e) {
-                console.error("Firebaseの初期化に失敗しました。ローカルモードで動作します。", e);
-            }
-        }
+        // Firebaseの初期化
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const provider = new GoogleAuthProvider();
 
         // --- 2. アプリケーションの状態管理 (State) ---
         let state = {
@@ -194,12 +168,10 @@
             }
         };
 
-        // Web Audio API を使ったアラーム音の生成（外部ファイル不要）
+        // アラーム音の生成（外部ファイル不要）
         function playAlarmSound() {
             if (!state.settings.soundOn) return;
             const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            
-            // 綺麗な2音のチャイム音を合成
             const playTone = (freq, start, duration) => {
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
@@ -212,7 +184,6 @@
                 osc.start(start);
                 osc.stop(start + duration);
             };
-            
             playTone(523.25, audioCtx.currentTime, 0.3); // C5
             playTone(659.25, audioCtx.currentTime + 0.15, 0.4); // E5
         }
@@ -243,7 +214,6 @@
         const userAvatar = document.getElementById('user-avatar');
         const userName = document.getElementById('user-name');
 
-        // デフォルトの日付に今日を設定
         todoDate.value = new Date().toISOString().split('T')[0];
 
         // --- 4. フルカレンダーの初期化 ---
@@ -256,7 +226,7 @@
             editable: true,
             events: [],
             eventClick: function(info) {
-                if(confirm(`タスク「${info.event.title}」を完了/未完了に切り替えますか？`)) {
+                if(confirm(`タスク「${info.event.title.replace(/★+/g, '').trim()}」を完了/未完了に切り替えますか？`)) {
                     toggleTodo(info.event.id);
                 }
             }
@@ -265,7 +235,7 @@
 
         // --- 5. データ保存・同期機能 ---
         async function saveData() {
-            if (isFirebaseActive && state.user) {
+            if (state.user) {
                 try {
                     await setDoc(doc(db, "users", state.user.uid), {
                         todos: state.todos,
@@ -282,16 +252,20 @@
         }
 
         async function loadData() {
-            if (isFirebaseActive && state.user) {
-                const docRef = doc(db, "users", state.user.uid);
-                const docSnap = await getDoc(docRef);
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    state.todos = data.todos || [];
-                    state.pomodoroCount = data.pomodoroCount || 0;
-                } else {
-                    state.todos = [];
-                    state.pomodoroCount = 0;
+            if (state.user) {
+                try {
+                    const docRef = doc(db, "users", state.user.uid);
+                    const docSnap = await getDoc(docRef);
+                    if (docSnap.exists()) {
+                        const data = docSnap.data();
+                        state.todos = data.todos || [];
+                        state.pomodoroCount = data.pomodoroCount || 0;
+                    } else {
+                        state.todos = [];
+                        state.pomodoroCount = 0;
+                    }
+                } catch (e) {
+                    console.error("Firestoreからの読み込みに失敗しました: ", e);
                 }
             } else {
                 state.todos = JSON.parse(localStorage.getItem('studydesk_todos')) || [];
@@ -316,7 +290,6 @@
             state.timer.intervalId = setInterval(() => {
                 if (state.timer.seconds === 0) {
                     if (state.timer.minutes === 0) {
-                        // タイマー終了処理
                         clearInterval(state.timer.intervalId);
                         state.timer.isRunning = false;
                         playAlarmSound();
@@ -369,20 +342,17 @@
 
         // --- 7. UIレンダリング ---
         function render() {
-            // TODOリストの描画
             todoList.innerHTML = '';
             
             if (state.todos.length === 0) {
                 todoList.innerHTML = `<p class="text-center text-gray-400 text-xs py-8">タスクがありません</p>`;
             } else {
-                // 日付順・未完了優先でソート
                 const sortedTodos = [...state.todos].sort((a,b) => new Date(a.date) - new Date(b.date) || a.completed - b.completed);
                 
                 sortedTodos.forEach(todo => {
                     const todoItem = document.createElement('div');
                     todoItem.className = `flex items-center justify-between p-3 rounded-xl border transition ${todo.completed ? 'bg-gray-50 border-gray-100 opacity-60' : 'bg-white border-gray-200 shadow-sm'}`;
                     
-                    // コストの星を生成
                     let stars = '';
                     for(let i=1; i<=5; i++) {
                         stars += `<i class="fa-solid fa-star text-[10px] ${i <= todo.cost ? 'text-amber-400' : 'text-gray-200'}"></i>`;
@@ -406,15 +376,13 @@
                         </button>
                     `;
 
-                    // イベントリスナーの追加
                     todoItem.querySelector('.btn-toggle').addEventListener('click', () => toggleTodo(todo.id));
                     todoItem.querySelector('.btn-delete').addEventListener('click', () => deleteTodo(todo.id));
-                    
                     todoList.appendChild(todoItem);
                 });
             }
 
-            // 進捗統計の計算
+            // 進捗の計算
             const todayStr = new Date().toISOString().split('T')[0];
             const todayTodos = state.todos.filter(t => t.date === todayStr);
             const todayCompleted = todayTodos.filter(t => t.completed).length;
@@ -427,7 +395,7 @@
             progressBar.style.width = `${percent}%`;
             progressPercent.textContent = `${percent}%`;
 
-            // カレンダーイベントの更新
+            // カレンダー同期
             const calendarEvents = state.todos.map(todo => ({
                 id: todo.id,
                 title: `${'★'.repeat(todo.cost)} ${todo.text}`,
@@ -469,7 +437,7 @@
             }
         }
 
-        // コストセレクターのインタラクション
+        // コストセレクター
         costSelector.querySelectorAll('button').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const selectedCost = parseInt(e.currentTarget.getAttribute('data-cost'));
@@ -488,7 +456,6 @@
             });
         });
 
-        // フォーム送信
         todoForm.addEventListener('submit', (e) => {
             e.preventDefault();
             if (!todoInput.value.trim()) return;
@@ -496,7 +463,6 @@
             todoInput.value = '';
         });
 
-        // タイマー系イベント
         btnTimerStart.addEventListener('click', startTimer);
         btnTimerPause.addEventListener('click', pauseTimer);
         btnTimerReset.addEventListener('click', resetTimer);
@@ -512,7 +478,6 @@
             }
         });
 
-        // エスケープ関数
         function escapeHTML(str) {
             return str.replace(/[&<>'"]/g, 
                 tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
@@ -520,40 +485,33 @@
         }
 
         // --- 9. 認証 (Auth) 制御 ---
-        if (isFirebaseActive) {
-            btnLogin.addEventListener('click', async () => {
-                try {
-                    await signInWithPopup(auth, provider);
-                } catch (e) {
-                    console.error("ログインエラー: ", e);
-                    alert("Googleログインに失敗しました。");
-                }
-            });
+        btnLogin.addEventListener('click', async () => {
+            try {
+                await signInWithPopup(auth, provider);
+            } catch (e) {
+                console.error("ログインエラー: ", e);
+                alert("Googleログインに失敗しました。認証プロバイダが有効になっているか確認してください。");
+            }
+        });
 
-            btnLogout.addEventListener('click', () => {
-                signOut(auth);
-            });
+        btnLogout.addEventListener('click', () => {
+            signOut(auth);
+        });
 
-            onAuthStateChanged(auth, (user) => {
-                if (user) {
-                    state.user = user;
-                    userName.textContent = user.displayName;
-                    userAvatar.src = user.photoURL;
-                    btnLogin.classList.add('hidden');
-                    userProfile.classList.remove('hidden');
-                } else {
-                    state.user = null;
-                    btnLogin.classList.remove('hidden');
-                    userProfile.classList.add('hidden');
-                }
-                loadData();
-            });
-        } else {
-            // Firebase未設定時はボタンを非表示、ローカル環境で読み込み
-            btnLogin.innerHTML = `<i class="fa-solid fa-cloud-sun"></i> ローカルモード`;
-            btnLogin.className = "bg-gray-100 text-gray-500 px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 cursor-default";
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                state.user = user;
+                userName.textContent = user.displayName;
+                userAvatar.src = user.photoURL;
+                btnLogin.classList.add('hidden');
+                userProfile.classList.remove('hidden');
+            } else {
+                state.user = null;
+                btnLogin.classList.remove('hidden');
+                userProfile.classList.add('hidden');
+            }
             loadData();
-        }
+        });
     </script>
 </body>
 </html>
