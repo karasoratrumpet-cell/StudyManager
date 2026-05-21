@@ -203,9 +203,9 @@
             user: null,
             todos: [],
             pomodoroCount: 0,
-            sortBy: 'date', // 'date', 'name', 'cost'
+            sortBy: 'date', 
             currentEditingId: null,
-            editingCost: 1, // 編集中のコスト一時保存用
+            editingCost: 1, 
             settings: { soundOn: true, currentCost: 1 },
             timer: { minutes: 25, seconds: 0, isBreak: false, isRunning: false, intervalId: null }
         };
@@ -390,7 +390,6 @@
             if (state.todos.length === 0) {
                 todoList.innerHTML = `<p class="text-center text-gray-400 text-xs py-8">タスクがありません</p>`;
             } else {
-                // 【機能強化】ソートロジックの適用（コスト順を追加）
                 let sortedTodos = [...state.todos];
                 if (state.sortBy === 'date') {
                     sortedTodos.sort((a, b) => new Date(a.date) - new Date(b.date) || a.completed - b.completed);
@@ -408,7 +407,8 @@
                     for(let i=1; i<=5; i++) stars += `<i class="fa-solid fa-star text-[10px] ${i <= todo.cost ? 'text-amber-400' : 'text-gray-200'}"></i>`;
                     const dateDisp = todo.date === todo.endDate ? todo.date : `${todo.date} ～ ${todo.endDate}`;
                     
-                    const memoHTML = todo.memo ? `<p class="text-xs text-gray-400 mt-1 pl-8 bg-gray-50/50 p-1.5 rounded-lg border border-gray-100/50 break-words font-normal">${escapeHTML(todo.memo)}</p>` : '';
+                    // 【修正ポイント】テキストを途中で隠さず、かつ右のボタン群を押し出さないように break-all を指定
+                    const memoHTML = todo.memo ? `<p class="text-xs text-gray-400 mt-1 pl-8 bg-gray-50/50 p-1.5 rounded-lg border border-gray-100/50 break-all font-normal">${escapeHTML(todo.memo)}</p>` : '';
 
                     todoItem.innerHTML = `
                         <div class="flex items-center justify-between">
@@ -417,7 +417,7 @@
                                     <i class="${todo.completed ? 'fa-solid fa-circle-check text-indigo-500' : 'fa-regular fa-circle'}"></i>
                                 </button>
                                 <div class="min-w-0 flex-1">
-                                    <p class="text-sm font-medium ${todo.completed ? 'line-through text-gray-400' : 'text-gray-700'} break-words">${escapeHTML(todo.text)}</p>
+                                    <p class="text-sm font-medium ${todo.completed ? 'line-through text-gray-400' : 'text-gray-700'} break-all">${escapeHTML(todo.text)}</p>
                                     <div class="flex items-center gap-2 mt-0.5">
                                         <span class="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-500 font-mono flex items-center gap-1"><i class="fa-regular fa-calendar text-[9px]"></i> ${dateDisp}</span>
                                         <div class="flex">${stars}</div>
@@ -458,7 +458,6 @@
             saveData();
         }
 
-        // 編集モーダルの制御
         function openEditModal(id) {
             const todo = state.todos.find(t => t.id === id);
             if (!todo) return;
@@ -469,7 +468,6 @@
             editEndDate.min = todo.date;
             editEndDate.value = todo.endDate;
             
-            // 【新機能】編集画面を開いたときに対象タスクの既存コスト星マークを反映
             state.editingCost = todo.cost || 1;
             updateEditCostStars(state.editingCost);
             
@@ -481,7 +479,6 @@
             state.currentEditingId = null;
         }
 
-        // 【新機能】編集モーダル内用：コスト星マークの表示切り替え関数
         function updateEditCostStars(costValue) {
             editCostSelector.querySelectorAll('button').forEach(b => {
                 if (parseInt(b.getAttribute('data-cost')) <= costValue) {
@@ -492,7 +489,6 @@
             });
         }
 
-        // 【新機能】編集モーダル内用：コスト星マーククリックイベント
         editCostSelector.querySelectorAll('button').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 state.editingCost = parseInt(e.currentTarget.getAttribute('data-cost'));
@@ -508,7 +504,7 @@
                         ...todo,
                         text: editInput.value.trim(),
                         memo: editMemo.value.trim(),
-                        cost: state.editingCost, // コストの変更を適用
+                        cost: state.editingCost, 
                         date: editDate.value,
                         endDate: editEndDate.value
                     };
@@ -536,7 +532,6 @@
             if(confirm("削除しますか？")) { state.todos = state.todos.filter(todo => todo.id !== id); saveData(); }
         }
 
-        // 新規追加フォーム用コストスターの選択
         costSelector.querySelectorAll('button').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 state.settings.currentCost = parseInt(e.currentTarget.getAttribute('data-cost'));
@@ -547,7 +542,6 @@
             });
         });
 
-        // 【機能強化】ソートボタンのアクティブ・非アクティブ処理を一元化する関数
         function updateSortButtons(activeBtn) {
             [sortDateBtn, sortNameBtn, sortCostBtn].forEach(btn => {
                 if (btn === activeBtn) {
@@ -570,7 +564,6 @@
             render();
         });
 
-        // 【新機能】コスト順並び替えボタンイベント
         sortCostBtn.addEventListener('click', () => {
             state.sortBy = 'cost';
             updateSortButtons(sortCostBtn);
