@@ -14,6 +14,17 @@
         .fc .fc-button-primary:hover { background-color: #2563eb; border-color: #2563eb; }
         .fc .fc-toolbar-title { font-size: 1.25rem !important; font-weight: 700; }
         .fc .fc-button { font-size: 0.75rem !important; padding: 0.4rem 0.8rem !important; }
+        
+        /* 【修正】カレンダー内の長いイベント名を強制的に自動折り返し（改行）させる設定 */
+        .fc-event .fc-event-title {
+            white-space: normal !important;
+            overflow-wrap: break-word !important;
+            word-break: break-all !important;
+        }
+        /* 週表示などで文字が縦に潰れないように少し内側の余白を調整 */
+        .fc-event {
+            padding: 2px 4px !important;
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans">
@@ -180,4 +191,418 @@
     </div>
 
     <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAApuzoBkA8dTXOoPKoFxVvkNXCrRJM-mw",
+            authDomain: "studymanager-b3652.firebaseapp.com",
+            projectId: "studymanager-b3652",
+            storageBucket: "studymanager-b3652.firebasestorage.app",
+            messagingSenderId: "705916367748",
+            appId: "1:705916367748:web:24581f6150a8884d9423d1"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const provider = new GoogleAuthProvider();
+
+        let state = {
+            user: null,
+            todos: [],
+            pomodoroCount: 0,
+            sortBy: 'date', 
+            currentEditingId: null,
+            editingCost: 1, 
+            settings: { soundOn: true, currentCost: 1 },
+            timer: { minutes: 25, seconds: 0, isBreak: false, isRunning: false, intervalId: null }
+        };
+
+        function playAlarmSound() {
+            if (!state.settings.soundOn) return;
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const playTone = (freq, start, duration) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, start);
+                gain.gain.setValueAtTime(0.3, start);
+                gain.gain.exponentialRampToValueAtTime(0.00001, start + duration);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(start); osc.stop(start + duration);
+            };
+            playTone(523.25, audioCtx.currentTime, 0.3);
+            playTone(659.25, audioCtx.currentTime + 0.15, 0.4);
+        }
+
+        const timerDisplay = document.getElementById('timer-display');
+        const timerStatus = document.getElementById('timer-status');
+        const btnTimerStart = document.getElementById('btn-timer-start');
+        const btnTimerPause = document.getElementById('btn-timer-pause');
+        const btnTimerReset = document.getElementById('btn-timer-reset');
+        const btnSoundToggle = document.getElementById('btn-sound-toggle');
+        const soundIcon = document.getElementById('sound-icon');
+        
+        const todoForm = document.getElementById('todo-form');
+        const todoInput = document.getElementById('todo-input');
+        const todoMemo = document.getElementById('todo-memo');
+        const todoDate = document.getElementById('todo-date');
+        const todoEndDate = document.getElementById('todo-end-date');
+        const todoList = document.getElementById('todo-list');
+        const costSelector = document.getElementById('cost-selector');
+        
+        const sortDateBtn = document.getElementById('sort-date');
+        const sortNameBtn = document.getElementById('sort-name');
+        const sortCostBtn = document.getElementById('sort-cost');
+        
+        const editModal = document.getElementById('edit-modal');
+        const editInput = document.getElementById('edit-input');
+        const editMemo = document.getElementById('edit-memo');
+        const editCostSelector = document.getElementById('edit-cost-selector');
+        const editDate = document.getElementById('edit-date');
+        const editEndDate = document.getElementById('edit-end-date');
+        const btnEditCancel = document.getElementById('btn-edit-cancel');
+        const btnEditSave = document.getElementById('btn-edit-save');
+
+        const progressBar = document.getElementById('progress-bar');
+        const progressPercent = document.getElementById('progress-percent');
+        const statCompleted = document.getElementById('stat-completed');
+        const statPomodoros = document.getElementById('stat-pomodoros');
+        const btnLogin = document.getElementById('btn-login');
+        const btnLogout = document.getElementById('btn-logout');
+        const userProfile = document.getElementById('user-profile');
+        const userAvatar = document.getElementById('user-avatar');
+        const userName = document.getElementById('user-name');
+
+        const todayInit = new Date().toISOString().split('T')[0];
+        todoDate.value = todayInit; todoEndDate.value = todayInit;
+        
+        todoDate.addEventListener('change', () => {
+            todoEndDate.min = todoDate.value;
+            if (todoEndDate.value < todoDate.value) todoEndDate.value = todoDate.value;
+        });
+
+        editDate.addEventListener('change', () => {
+            editEndDate.min = editDate.value;
+            if (editEndDate.value < editDate.value) editEndDate.value = editDate.value;
+        });
+
+        let calendar;
+        const calendarEl = document.getElementById('calendar');
+        calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            locale: 'ja',
+            headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,dayGridWeek' },
+            buttonText: { month: '月', week: '週', today: '今日' },
+            editable: true,
+            events: [],
+            eventClick: function(info) {
+                openEditModal(info.event.id);
+            }
+        });
+        calendar.render();
+
+        function cleanExpiredTodos() {
+            const now = Date.now();
+            const oneDayMs = 24 * 60 * 60 * 1000;
+            state.todos = state.todos.filter(todo => {
+                if (todo.completed && todo.completedAt) return (now - todo.completedAt) < oneDayMs;
+                return true;
+            });
+        }
+
+        async function saveData() {
+            cleanExpiredTodos();
+            if (state.user) {
+                try {
+                    await setDoc(doc(db, "users", state.user.uid), {
+                        todos: state.todos,
+                        pomodoroCount: state.pomodoroCount
+                    });
+                } catch (e) { console.error("Save Error: ", e); }
+            } else {
+                localStorage.setItem('studydesk_todos', JSON.stringify(state.todos));
+                localStorage.setItem('studydesk_pomo', state.pomodoroCount);
+            }
+            render();
+        }
+
+        async function loadData() {
+            if (state.user) {
+                try {
+                    const docRef = doc(db, "users", state.user.uid);
+                    const docSnap = await getDoc(docRef);
+                    if (docSnap.exists()) {
+                        const data = docSnap.data();
+                        state.todos = data.todos || [];
+                        state.pomodoroCount = data.pomodoroCount || 0;
+                    } else { state.todos = []; state.pomodoroCount = 0; }
+                } catch (e) { console.error("Load Error: ", e); }
+            } else {
+                state.todos = JSON.parse(localStorage.getItem('studydesk_todos')) || [];
+                state.pomodoroCount = parseInt(localStorage.getItem('studydesk_pomo')) || 0;
+            }
+            cleanExpiredTodos();
+            render();
+        }
+
+        function updateTimerDisplay() {
+            const m = String(state.timer.minutes).padStart(2, '0');
+            const s = String(state.timer.seconds).padStart(2, '0');
+            timerDisplay.textContent = `${m}:${s}`;
+        }
+
+        function startTimer() {
+            if (state.timer.isRunning) return;
+            state.timer.isRunning = true;
+            btnTimerStart.classList.add('hidden'); btnTimerPause.classList.remove('hidden');
+            state.timer.intervalId = setInterval(() => {
+                if (state.timer.seconds === 0) {
+                    if (state.timer.minutes === 0) {
+                        clearInterval(state.timer.intervalId); state.timer.isRunning = false;
+                        playAlarmSound();
+                        if (!state.timer.isBreak) {
+                            state.pomodoroCount++; state.timer.isBreak = true; state.timer.minutes = 5;
+                            timerStatus.textContent = "休憩 (5分)";
+                            timerStatus.className = "text-xs font-bold uppercase bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full";
+                        } else {
+                            state.timer.isBreak = false; state.timer.minutes = 25;
+                            timerStatus.textContent = "集中 (25分)";
+                            timerStatus.className = "text-xs font-bold uppercase bg-red-100 text-red-700 px-3 py-1 rounded-full";
+                        }
+                        btnTimerStart.classList.remove('hidden'); btnTimerPause.classList.add('hidden');
+                        saveData(); return;
+                    }
+                    state.timer.minutes--; state.timer.seconds = 59;
+                } else state.timer.seconds--;
+                updateTimerDisplay();
+            }, 1000);
+        }
+
+        function pauseTimer() {
+            clearInterval(state.timer.intervalId); state.timer.isRunning = false;
+            btnTimerStart.classList.remove('hidden'); btnTimerPause.classList.add('hidden');
+        }
+
+        function resetTimer() {
+            clearInterval(state.timer.intervalId); state.timer.isRunning = false;
+            state.timer.isBreak = false; state.timer.minutes = 25; state.timer.seconds = 0;
+            timerStatus.textContent = "集中 (25分)";
+            timerStatus.className = "text-xs font-bold uppercase bg-red-100 text-red-700 px-3 py-1 rounded-full";
+            btnTimerStart.classList.remove('hidden'); btnTimerPause.classList.add('hidden');
+            updateTimerDisplay();
+        }
+
+        function render() {
+            todoList.innerHTML = '';
+            if (state.todos.length === 0) {
+                todoList.innerHTML = `<p class="text-center text-gray-400 text-xs py-8">タスクがありません</p>`;
+            } else {
+                let sortedTodos = [...state.todos];
+                if (state.sortBy === 'date') {
+                    sortedTodos.sort((a, b) => new Date(a.date) - new Date(b.date) || a.completed - b.completed);
+                } else if (state.sortBy === 'name') {
+                    sortedTodos.sort((a, b) => a.text.localeCompare(b.text, 'ja') || a.completed - b.completed);
+                } else if (state.sortBy === 'cost') {
+                    sortedTodos.sort((a, b) => b.cost - a.cost || new Date(a.date) - new Date(b.date) || a.completed - b.completed);
+                }
+
+                sortedTodos.forEach(todo => {
+                    const todoItem = document.createElement('div');
+                    todoItem.className = `flex flex-col p-3 rounded-xl border transition w-full min-w-0 ${todo.completed ? 'bg-gray-50 border-gray-100 opacity-60' : 'bg-white border-gray-200 shadow-sm'}`;
+                    
+                    let stars = '';
+                    for(let i=1; i<=5; i++) stars += `<i class="fa-solid fa-star text-[10px] ${i <= todo.cost ? 'text-amber-400' : 'text-gray-200'}"></i>`;
+                    const dateDisp = todo.date === todo.endDate ? todo.date : `${todo.date} ～ ${todo.endDate}`;
+                    
+                    const memoHTML = todo.memo ? `<p class="text-xs text-gray-400 mt-1 pl-8 bg-gray-50/50 p-1.5 rounded-lg border border-gray-100/50 break-all font-normal">${escapeHTML(todo.memo)}</p>` : '';
+
+                    todoItem.innerHTML = `
+                        <div class="flex items-center justify-between w-full min-w-0 gap-2">
+                            <div class="flex items-center gap-3 min-w-0 flex-1">
+                                <button class="btn-toggle text-xl text-gray-300 hover:text-indigo-600 transition shrink-0">
+                                    <i class="${todo.completed ? 'fa-solid fa-circle-check text-indigo-500' : 'fa-regular fa-circle'}"></i>
+                                </button>
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-sm font-medium ${todo.completed ? 'line-through text-gray-400' : 'text-gray-700'} break-all whitespace-pre-wrap overflow-wrap-anywhere">${escapeHTML(todo.text)}</p>
+                                    <div class="flex items-center flex-wrap gap-2 mt-0.5">
+                                        <span class="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-500 font-mono flex items-center gap-1"><i class="fa-regular fa-calendar text-[9px]"></i> ${dateDisp}</span>
+                                        <div class="flex">${stars}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-1 shrink-0">
+                                <button class="btn-edit text-gray-300 hover:text-indigo-500 p-1 transition"><i class="fa-regular fa-pen-to-square"></i></button>
+                                <button class="btn-delete text-gray-300 hover:text-red-500 p-1 transition"><i class="fa-regular fa-trash-can"></i></button>
+                            </div>
+                        </div>
+                        ${memoHTML}
+                    `;
+                    todoItem.querySelector('.btn-toggle').addEventListener('click', () => toggleTodo(todo.id));
+                    todoItem.querySelector('.btn-edit').addEventListener('click', () => openEditModal(todo.id));
+                    todoItem.querySelector('.btn-delete').addEventListener('click', () => deleteTodo(todo.id));
+                    todoList.appendChild(todoItem);
+                });
+            }
+
+            const todayStr = new Date().toISOString().split('T')[0];
+            const todayTodos = state.todos.filter(t => todayStr >= t.date && todayStr <= t.endDate);
+            const todayCompleted = todayTodos.filter(t => t.completed).length;
+            statCompleted.textContent = state.todos.filter(t => t.completed).length;
+            statPomodoros.textContent = state.pomodoroCount;
+            const percent = todayTodos.length > 0 ? Math.round((todayCompleted / todayTodos.length) * 100) : 0;
+            progressBar.style.width = `${percent}%`; progressPercent.textContent = `${percent}%`;
+            
+            const calendarEvents = state.todos.map(todo => {
+                let end = new Date(todo.endDate); end.setDate(end.getDate() + 1);
+                return { id: todo.id, title: `${'★'.repeat(todo.cost)} ${todo.text}`, start: todo.date, end: end.toISOString().split('T')[0], allDay: true, backgroundColor: todo.completed ? '#9ca3af' : '#6366f1', borderColor: todo.completed ? '#9ca3af' : '#6366f1', textColor: '#ffffff' };
+            });
+            calendar.removeAllEvents(); calendar.addEventSource(calendarEvents);
+        }
+
+        function addTodo(text, memo, date, endDate, cost) {
+            state.todos.push({ id: Date.now().toString(), text, memo, date, endDate, cost, completed: false, completedAt: null });
+            saveData();
+        }
+
+        function openEditModal(id) {
+            const todo = state.todos.find(t => t.id === id);
+            if (!todo) return;
+            state.currentEditingId = id;
+            editInput.value = todo.text;
+            editMemo.value = todo.memo || '';
+            editDate.value = todo.date;
+            editEndDate.min = todo.date;
+            editEndDate.value = todo.endDate;
+            
+            state.editingCost = todo.cost || 1;
+            updateEditCostStars(state.editingCost);
+            
+            editModal.classList.remove('hidden');
+        }
+
+        function closeEditModal() {
+            editModal.classList.add('hidden');
+            state.currentEditingId = null;
+        }
+
+        function updateEditCostStars(costValue) {
+            editCostSelector.querySelectorAll('button').forEach(b => {
+                if (parseInt(b.getAttribute('data-cost')) <= costValue) {
+                    b.classList.remove('text-gray-300'); b.classList.add('text-amber-400');
+                } else {
+                    b.classList.remove('text-amber-400'); b.classList.add('text-gray-300');
+                }
+            });
+        }
+
+        editCostSelector.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                state.editingCost = parseInt(e.currentTarget.getAttribute('data-cost'));
+                updateEditCostStars(state.editingCost);
+            });
+        });
+
+        btnEditSave.addEventListener('click', () => {
+            if (!editInput.value.trim()) return;
+            state.todos = state.todos.map(todo => {
+                if (todo.id === state.currentEditingId) {
+                    return {
+                        ...todo,
+                        text: editInput.value.trim(),
+                        memo: editMemo.value.trim(),
+                        cost: state.editingCost, 
+                        date: editDate.value,
+                        endDate: editEndDate.value
+                    };
+                }
+                return todo;
+            });
+            closeEditModal();
+            saveData();
+        });
+
+        btnEditCancel.addEventListener('click', closeEditModal);
+
+        function toggleTodo(id) {
+            state.todos = state.todos.map(todo => {
+                if (todo.id === id) {
+                    const isNowCompleted = !todo.completed;
+                    return { ...todo, completed: isNowCompleted, completedAt: isNowCompleted ? Date.now() : null };
+                }
+                return todo;
+            });
+            saveData();
+        }
+
+        function deleteTodo(id) {
+            if(confirm("削除しますか？")) { state.todos = state.todos.filter(todo => todo.id !== id); saveData(); }
+        }
+
+        costSelector.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                state.settings.currentCost = parseInt(e.currentTarget.getAttribute('data-cost'));
+                costSelector.querySelectorAll('button').forEach(b => {
+                    if (parseInt(b.getAttribute('data-cost')) <= state.settings.currentCost) { b.classList.remove('text-gray-300'); b.classList.add('text-amber-400'); }
+                    else { b.classList.remove('text-amber-400'); b.classList.add('text-gray-300'); }
+                });
+            });
+        });
+
+        function updateSortButtons(activeBtn) {
+            [sortDateBtn, sortNameBtn, sortCostBtn].forEach(btn => {
+                if (btn === activeBtn) {
+                    btn.className = "px-2 py-1 rounded bg-white text-indigo-600 font-medium shadow-sm transition";
+                } else {
+                    btn.className = "px-2 py-1 rounded text-gray-500 hover:text-gray-700 transition";
+                }
+            });
+        }
+
+        sortDateBtn.addEventListener('click', () => {
+            state.sortBy = 'date';
+            updateSortButtons(sortDateBtn);
+            render();
+        });
+
+        sortNameBtn.addEventListener('click', () => {
+            state.sortBy = 'name';
+            updateSortButtons(sortNameBtn);
+            render();
+        });
+
+        sortCostBtn.addEventListener('click', () => {
+            state.sortBy = 'cost';
+            updateSortButtons(sortCostBtn);
+            render();
+        });
+
+        todoForm.addEventListener('submit', (e) => {
+            e.preventDefault(); if (!todoInput.value.trim()) return;
+            addTodo(todoInput.value.trim(), todoMemo.value.trim(), todoDate.value, todoEndDate.value, state.settings.currentCost);
+            todoInput.value = ''; todoMemo.value = '';
+        });
+
+        btnTimerStart.addEventListener('click', startTimer); btnTimerPause.addEventListener('click', pauseTimer); btnTimerReset.addEventListener('click', resetTimer);
+        btnSoundToggle.addEventListener('click', () => {
+            state.settings.soundOn = !state.settings.soundOn;
+            soundIcon.className = state.settings.soundOn ? "fa-solid fa-volume-high" : "fa-solid fa-volume-xmark";
+        });
+
+        function escapeHTML(str) { return str ? str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)) : ''; }
+
+        btnLogin.addEventListener('click', async () => {
+            try { await signInWithPopup(auth, provider); } catch (e) { alert("ログインに失敗しました。Firebaseの設定（承認済みドメイン）を確認してください。"); }
+        });
+        btnLogout.addEventListener('click', () => signOut(auth));
+        onAuthStateChanged(auth, (user) => {
+            if (user) { state.user = user; userName.textContent = user.displayName; userAvatar.src = user.photoURL; btnLogin.classList.add('hidden'); userProfile.classList.remove('hidden'); }
+            else { state.user = null; btnLogin.classList.remove('hidden'); userProfile.classList.add('hidden'); }
+            loadData();
+        });
+        setInterval(() => { if (state.todos.some(t => t.completed)) { cleanExpiredTodos(); render(); } }, 60000);
+    </script>
+</body>
+</html>
