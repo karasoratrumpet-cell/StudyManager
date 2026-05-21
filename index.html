@@ -89,9 +89,10 @@
                 <h3 class="font-bold text-gray-900 flex items-center gap-2">
                     <i class="fa-solid fa-list-check text-indigo-500"></i> TODOリスト
                 </h3>
-                <div class="flex items-center gap-1 bg-gray-100 p-1 rounded-lg text-xs">
+                <div class="flex items-center gap-1 bg-gray-100 p-1 rounded-lg text-[11px]">
                     <button id="sort-date" class="px-2 py-1 rounded bg-white text-indigo-600 font-medium shadow-sm transition">日付順</button>
                     <button id="sort-name" class="px-2 py-1 rounded text-gray-500 hover:text-gray-700 transition">名前順</button>
+                    <button id="sort-cost" class="px-2 py-1 rounded text-gray-500 hover:text-gray-700 transition">コスト順</button>
                 </div>
             </div>
 
@@ -151,6 +152,16 @@
                     <label class="block text-xs font-medium text-gray-500 mb-1">メモ</label>
                     <textarea id="edit-memo" rows="3" class="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"></textarea>
                 </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 mb-1">コスト (重要度・作業量)</label>
+                    <div class="flex gap-1" id="edit-cost-selector">
+                        <button type="button" data-cost="1" class="edit-cost-star text-gray-300 text-base"><i class="fa-solid fa-star"></i></button>
+                        <button type="button" data-cost="2" class="edit-cost-star text-gray-300 text-base"><i class="fa-solid fa-star"></i></button>
+                        <button type="button" data-cost="3" class="edit-cost-star text-gray-300 text-base"><i class="fa-solid fa-star"></i></button>
+                        <button type="button" data-cost="4" class="edit-cost-star text-gray-300 text-base"><i class="fa-solid fa-star"></i></button>
+                        <button type="button" data-cost="5" class="edit-cost-star text-gray-300 text-base"><i class="fa-solid fa-star"></i></button>
+                    </div>
+                </div>
                 <div class="grid grid-cols-2 gap-2">
                     <div>
                         <label class="block text-xs font-medium text-gray-500 mb-1">開始日</label>
@@ -192,8 +203,9 @@
             user: null,
             todos: [],
             pomodoroCount: 0,
-            sortBy: 'date', 
+            sortBy: 'date', // 'date', 'name', 'cost'
             currentEditingId: null,
+            editingCost: 1, // 編集中のコスト一時保存用
             settings: { soundOn: true, currentCost: 1 },
             timer: { minutes: 25, seconds: 0, isBreak: false, isRunning: false, intervalId: null }
         };
@@ -233,10 +245,12 @@
         
         const sortDateBtn = document.getElementById('sort-date');
         const sortNameBtn = document.getElementById('sort-name');
+        const sortCostBtn = document.getElementById('sort-cost');
         
         const editModal = document.getElementById('edit-modal');
         const editInput = document.getElementById('edit-input');
         const editMemo = document.getElementById('edit-memo');
+        const editCostSelector = document.getElementById('edit-cost-selector');
         const editDate = document.getElementById('edit-date');
         const editEndDate = document.getElementById('edit-end-date');
         const btnEditCancel = document.getElementById('btn-edit-cancel');
@@ -255,13 +269,11 @@
         const todayInit = new Date().toISOString().split('T')[0];
         todoDate.value = todayInit; todoEndDate.value = todayInit;
         
-        // 追加フォーム用：日付矛盾防止のバリデーション
         todoDate.addEventListener('change', () => {
             todoEndDate.min = todoDate.value;
             if (todoEndDate.value < todoDate.value) todoEndDate.value = todoDate.value;
         });
 
-        // 編集フォーム用：日付矛盾防止のバリデーション
         editDate.addEventListener('change', () => {
             editEndDate.min = editDate.value;
             if (editEndDate.value < editDate.value) editEndDate.value = editDate.value;
@@ -378,11 +390,14 @@
             if (state.todos.length === 0) {
                 todoList.innerHTML = `<p class="text-center text-gray-400 text-xs py-8">タスクがありません</p>`;
             } else {
+                // 【機能強化】ソートロジックの適用（コスト順を追加）
                 let sortedTodos = [...state.todos];
                 if (state.sortBy === 'date') {
                     sortedTodos.sort((a, b) => new Date(a.date) - new Date(b.date) || a.completed - b.completed);
                 } else if (state.sortBy === 'name') {
                     sortedTodos.sort((a, b) => a.text.localeCompare(b.text, 'ja') || a.completed - b.completed);
+                } else if (state.sortBy === 'cost') {
+                    sortedTodos.sort((a, b) => b.cost - a.cost || new Date(a.date) - new Date(b.date) || a.completed - b.completed);
                 }
 
                 sortedTodos.forEach(todo => {
@@ -443,6 +458,7 @@
             saveData();
         }
 
+        // 編集モーダルの制御
         function openEditModal(id) {
             const todo = state.todos.find(t => t.id === id);
             if (!todo) return;
@@ -450,8 +466,13 @@
             editInput.value = todo.text;
             editMemo.value = todo.memo || '';
             editDate.value = todo.date;
-            editEndDate.min = todo.date; // 最小日付の安全装置をセット
+            editEndDate.min = todo.date;
             editEndDate.value = todo.endDate;
+            
+            // 【新機能】編集画面を開いたときに対象タスクの既存コスト星マークを反映
+            state.editingCost = todo.cost || 1;
+            updateEditCostStars(state.editingCost);
+            
             editModal.classList.remove('hidden');
         }
 
@@ -459,6 +480,25 @@
             editModal.classList.add('hidden');
             state.currentEditingId = null;
         }
+
+        // 【新機能】編集モーダル内用：コスト星マークの表示切り替え関数
+        function updateEditCostStars(costValue) {
+            editCostSelector.querySelectorAll('button').forEach(b => {
+                if (parseInt(b.getAttribute('data-cost')) <= costValue) {
+                    b.classList.remove('text-gray-300'); b.classList.add('text-amber-400');
+                } else {
+                    b.classList.remove('text-amber-400'); b.classList.add('text-gray-300');
+                }
+            });
+        }
+
+        // 【新機能】編集モーダル内用：コスト星マーククリックイベント
+        editCostSelector.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                state.editingCost = parseInt(e.currentTarget.getAttribute('data-cost'));
+                updateEditCostStars(state.editingCost);
+            });
+        });
 
         btnEditSave.addEventListener('click', () => {
             if (!editInput.value.trim()) return;
@@ -468,6 +508,7 @@
                         ...todo,
                         text: editInput.value.trim(),
                         memo: editMemo.value.trim(),
+                        cost: state.editingCost, // コストの変更を適用
                         date: editDate.value,
                         endDate: editEndDate.value
                     };
@@ -495,6 +536,7 @@
             if(confirm("削除しますか？")) { state.todos = state.todos.filter(todo => todo.id !== id); saveData(); }
         }
 
+        // 新規追加フォーム用コストスターの選択
         costSelector.querySelectorAll('button').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 state.settings.currentCost = parseInt(e.currentTarget.getAttribute('data-cost'));
@@ -505,17 +547,33 @@
             });
         });
 
+        // 【機能強化】ソートボタンのアクティブ・非アクティブ処理を一元化する関数
+        function updateSortButtons(activeBtn) {
+            [sortDateBtn, sortNameBtn, sortCostBtn].forEach(btn => {
+                if (btn === activeBtn) {
+                    btn.className = "px-2 py-1 rounded bg-white text-indigo-600 font-medium shadow-sm transition";
+                } else {
+                    btn.className = "px-2 py-1 rounded text-gray-500 hover:text-gray-700 transition";
+                }
+            });
+        }
+
         sortDateBtn.addEventListener('click', () => {
             state.sortBy = 'date';
-            sortDateBtn.className = "px-2 py-1 rounded bg-white text-indigo-600 font-medium shadow-sm transition";
-            sortNameBtn.className = "px-2 py-1 rounded text-gray-500 hover:text-gray-700 transition";
+            updateSortButtons(sortDateBtn);
             render();
         });
 
         sortNameBtn.addEventListener('click', () => {
             state.sortBy = 'name';
-            sortNameBtn.className = "px-2 py-1 rounded bg-white text-indigo-600 font-medium shadow-sm transition";
-            sortDateBtn.className = "px-2 py-1 rounded text-gray-500 hover:text-gray-700 transition";
+            updateSortButtons(sortNameBtn);
+            render();
+        });
+
+        // 【新機能】コスト順並び替えボタンイベント
+        sortCostBtn.addEventListener('click', () => {
+            state.sortBy = 'cost';
+            updateSortButtons(sortCostBtn);
             render();
         });
 
