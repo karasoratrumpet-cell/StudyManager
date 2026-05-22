@@ -49,14 +49,9 @@
             <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 text-center">
                 <div class="flex justify-between items-center mb-4">
                     <span id="timer-status" class="text-xs font-bold uppercase tracking-wider bg-red-100 text-red-700 px-3 py-1 rounded-full">集中 (25分)</span>
-                    <div class="flex items-center gap-3">
-                        <button id="btn-timer-skip" class="text-gray-400 hover:text-indigo-600 transition text-sm flex items-center gap-1 font-medium" title="次のモードへスキップ">
-                            スキップ <i class="fa-solid fa-forward"></i>
-                        </button>
-                        <button id="btn-sound-toggle" class="text-gray-500 hover:text-indigo-600 transition text-lg">
-                            <i id="sound-icon" class="fa-solid fa-volume-high"></i>
-                        </button>
-                    </div>
+                    <button id="btn-sound-toggle" class="text-gray-500 hover:text-indigo-600 transition text-lg">
+                        <i id="sound-icon" class="fa-solid fa-volume-high"></i>
+                    </button>
                 </div>
                 <div id="timer-display" class="text-6xl font-mono font-bold text-gray-900 my-6">25:00</div>
                 <div class="flex justify-center gap-3">
@@ -248,7 +243,6 @@
         const btnTimerStart = document.getElementById('btn-timer-start');
         const btnTimerPause = document.getElementById('btn-timer-pause');
         const btnTimerReset = document.getElementById('btn-timer-reset');
-        const btnTimerSkip = document.getElementById('btn-timer-skip'); // 【新設】
         const btnSoundToggle = document.getElementById('btn-sound-toggle');
         const soundIcon = document.getElementById('sound-icon');
         
@@ -283,6 +277,7 @@
         const userAvatar = document.getElementById('user-avatar');
         const userName = document.getElementById('user-name');
 
+        // ローカルの正確な「YYYY-MM-DD」を返す補助関数
         function getLocalDateString(dateObj = new Date()) {
             const year = dateObj.getFullYear();
             const month = String(dateObj.getMonth() + 1).padStart(2, '0');
@@ -333,4 +328,382 @@
                 try {
                     isLocalTimerChange = true;
                     const payload = {
-      
+                        todos: state.todos,
+                        pomodoroCount: state.pomodoroCount,
+                        timerState: {
+                            isBreak: state.timer.isBreak,
+                            isRunning: state.timer.isRunning,
+                            minutes: state.timer.minutes,
+                            seconds: state.timer.seconds,
+                            serverTimestamp: Date.now()
+                        }
+                    };
+                    await setDoc(doc(db, "users", state.user.uid), payload);
+                } catch (e) { console.error("Save Error: ", e); }
+            } else {
+                localStorage.setItem('studydesk_todos', JSON.stringify(state.todos));
+                localStorage.setItem('studydesk_pomo', state.pomodoroCount);
+            }
+            render();
+        }
+
+        function startRealtimeSync() {
+            if (!state.user) return;
+            if (unsubscribeFirestore) unsubscribeFirestore();
+
+            unsubscribeFirestore = onSnapshot(doc(db, "users", state.user.uid), (snapshot) => {
+                if (isLocalTimerChange) {
+                    isLocalTimerChange = false;
+                    return; 
+                }
+                if (snapshot.exists()) {
+                    const data = snapshot.data();
+                    state.todos = data.todos || [];
+                    state.pomodoroCount = data.pomodoroCount || 0;
+
+                    if (data.timerState) {
+                        const srv = data.timerState;
+                        if (srv.serverTimestamp > state.timer.lastServerSync) {
+                            state.timer.lastServerSync = srv.serverTimestamp;
+                            state.timer.isBreak = srv.isBreak;
+                            
+                            if (srv.isRunning) {
+                                const elapsedSec = Math.floor((Date.now() - srv.serverTimestamp) / 1000);
+                                let totalSec = (srv.minutes * 60) + srv.seconds - elapsedSec;
+                                
+                                if (totalSec <= 0) {
+                                    state.timer.minutes = 0;
+                                    state.timer.seconds = 0;
+                                } else {
+                                    state.timer.minutes = Math.floor(totalSec / 60);
+                                    state.timer.seconds = totalSec % 60;
+                                }
+                                if (!state.timer.isRunning) {
+                                    syncUIForMode();
+                                    startTimer(false); 
+                                }
+                            } else {
+                                state.timer.minutes = srv.minutes;
+                                state.timer.seconds = srv.seconds;
+                                if (state.timer.isRunning) {
+                                    clearInterval(state.timer.intervalId);
+                                    state.timer.isRunning = false;
+                                }
+                            }
+                            syncUIForMode();
+                        }
+                    }
+                    cleanExpiredTodos();
+                    render();
+                }
+            });
+        }
+
+        function syncUIForMode() {
+            if (state.timer.isBreak) {
+                timerStatus.textContent = "休憩 (5分)";
+                timerStatus.className = "text-xs font-bold uppercase bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full";
+            } else {
+                timerStatus.textContent = "集中 (25分)";
+                timerStatus.className = "text-xs font-bold uppercase bg-red-100 text-red-700 px-3 py-1 rounded-full";
+            }
+            if (state.timer.isRunning) {
+                btnTimerStart.classList.add('hidden'); btnTimerPause.classList.remove('hidden');
+            } else {
+                btnTimerStart.classList.remove('hidden'); btnTimerPause.classList.add('hidden');
+            }
+            updateTimerDisplay();
+        }
+
+        function updateTimerDisplay() {
+            const m = String(state.timer.minutes).padStart(2, '0');
+            const s = String(state.timer.seconds).padStart(2, '0');
+            timerDisplay.textContent = `${m}:${s}`;
+        }
+
+        function startTimer(shouldUpload = true) {
+            if (state.timer.isRunning) return;
+            state.timer.isRunning = true;
+            btnTimerStart.classList.add('hidden'); btnTimerPause.classList.remove('hidden');
+            
+            if (shouldUpload) {
+                state.timer.lastServerSync = Date.now();
+                saveData(); 
+            }
+
+            state.timer.intervalId = setInterval(() => {
+                if (state.timer.seconds === 0) {
+                    if (state.timer.minutes === 0) {
+                        clearInterval(state.timer.intervalId); state.timer.isRunning = false;
+                        playAlarmSound();
+                        
+                        if (!state.timer.isBreak) {
+                            state.pomodoroCount++; state.timer.isBreak = true; state.timer.minutes = 5;
+                        } else {
+                            state.timer.isBreak = false; state.timer.minutes = 25;
+                        }
+                        state.timer.seconds = 0;
+                        syncUIForMode();
+                        saveData(); 
+                        return;
+                    }
+                    state.timer.minutes--; state.timer.seconds = 59;
+                } else state.timer.seconds--;
+                updateTimerDisplay();
+            }, 1000);
+        }
+
+        function pauseTimer() {
+            clearInterval(state.timer.intervalId); state.timer.isRunning = false;
+            btnTimerStart.classList.remove('hidden'); btnTimerPause.classList.add('hidden');
+            state.timer.lastServerSync = Date.now();
+            saveData(); 
+        }
+
+        function resetTimer() {
+            clearInterval(state.timer.intervalId); state.timer.isRunning = false;
+            state.timer.isBreak = false; state.timer.minutes = 25; state.timer.seconds = 0;
+            syncUIForMode();
+            state.timer.lastServerSync = Date.now();
+            saveData(); 
+        }
+
+        function render() {
+            todoList.innerHTML = '';
+            if (state.todos.length === 0) {
+                todoList.innerHTML = `<p class="text-center text-gray-400 text-xs py-8">タスクがありません</p>`;
+            } else {
+                let sortedTodos = [...state.todos];
+                if (state.sortBy === 'date') {
+                    sortedTodos.sort((a, b) => new Date(a.date) - new Date(b.date) || a.completed - b.completed);
+                } else if (state.sortBy === 'name') {
+                    sortedTodos.sort((a, b) => a.text.localeCompare(b.text, 'ja') || a.completed - b.completed);
+                } else if (state.sortBy === 'cost') {
+                    sortedTodos.sort((a, b) => b.cost - a.cost || new Date(a.date) - new Date(b.date) || a.completed - b.completed);
+                }
+
+                sortedTodos.forEach(todo => {
+                    const todoItem = document.createElement('div');
+                    todoItem.className = `flex flex-col p-3 rounded-xl border transition w-full min-w-0 ${todo.completed ? 'bg-gray-50 border-gray-100 opacity-60' : 'bg-white border-gray-200 shadow-sm'}`;
+                    
+                    let stars = '';
+                    for(let i=1; i<=5; i++) stars += `<i class="fa-solid fa-star text-[10px] ${i <= todo.cost ? 'text-amber-400' : 'text-gray-200'}"></i>`;
+                    const dateDisp = todo.date === todo.endDate ? todo.date : `${todo.date} ～ ${todo.endDate}`;
+                    
+                    const memoHTML = todo.memo ? `<p class="text-xs text-gray-400 mt-1 pl-8 bg-gray-50/50 p-1.5 rounded-lg border border-gray-100/50 break-all font-normal">${escapeHTML(todo.memo)}</p>` : '';
+
+                    todoItem.innerHTML = `
+                        <div class="flex items-center justify-between w-full min-w-0 gap-2">
+                            <div class="flex items-center gap-3 min-w-0 flex-1">
+                                <button class="btn-toggle text-xl text-gray-300 hover:text-indigo-600 transition shrink-0">
+                                    <i class="${todo.completed ? 'fa-solid fa-circle-check text-indigo-500' : 'fa-regular fa-circle'}"></i>
+                                </button>
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-sm font-medium ${todo.completed ? 'line-through text-gray-400' : 'text-gray-700'} break-all whitespace-pre-wrap overflow-wrap-anywhere">${escapeHTML(todo.text)}</p>
+                                    <div class="flex items-center flex-wrap gap-2 mt-0.5">
+                                        <span class="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-500 font-mono flex items-center gap-1"><i class="fa-regular fa-calendar text-[9px]"></i> ${dateDisp}</span>
+                                        <div class="flex">${stars}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-1 shrink-0">
+                                <button class="btn-edit text-gray-300 hover:text-indigo-500 p-1 transition"><i class="fa-regular fa-pen-to-square"></i></button>
+                                <button class="btn-delete text-gray-300 hover:text-red-500 p-1 transition"><i class="fa-regular fa-trash-can"></i></button>
+                            </div>
+                        </div>
+                        ${memoHTML}
+                    `;
+                    todoItem.querySelector('.btn-toggle').addEventListener('click', () => toggleTodo(todo.id));
+                    todoItem.querySelector('.btn-edit').addEventListener('click', () => openEditModal(todo.id));
+                    todoItem.querySelector('.btn-delete').addEventListener('click', () => deleteTodo(todo.id));
+                    todoList.appendChild(todoItem);
+                });
+            }
+
+            // 【修正】タイムゾーンズレを回避し、今日期間（開始日～終了日）に該当するタスクを正確に判定
+            const todayStr = getLocalDateString();
+            const todayTodos = state.todos.filter(t => todayStr >= t.date && todayStr <= t.endDate);
+            const todayCompleted = todayTodos.filter(t => t.completed).length;
+            
+            statCompleted.textContent = state.todos.filter(t => t.completed).length;
+            statPomodoros.textContent = state.pomodoroCount;
+            
+            // 進捗バーと％テキストの完全連動アップデート
+            const percent = todayTodos.length > 0 ? Math.round((todayCompleted / todayTodos.length) * 100) : 0;
+            progressBar.style.width = `${percent}%`; 
+            progressPercent.textContent = `${percent}%`;
+            
+            const calendarEvents = state.todos.map(todo => {
+                let end = new Date(todo.endDate); end.setDate(end.getDate() + 1);
+                return { id: todo.id, title: `${'★'.repeat(todo.cost)} ${todo.text}`, start: todo.date, end: end.toISOString().split('T')[0], allDay: true, backgroundColor: todo.completed ? '#9ca3af' : '#6366f1', borderColor: todo.completed ? '#9ca3af' : '#6366f1', textColor: '#ffffff' };
+            });
+            calendar.removeAllEvents(); calendar.addEventSource(calendarEvents);
+        }
+
+        function addTodo(text, memo, date, endDate, cost) {
+            state.todos.push({ id: Date.now().toString(), text, memo, date, endDate, cost, completed: false, completedAt: null });
+            saveData();
+        }
+
+        function openEditModal(id) {
+            const todo = state.todos.find(t => t.id === id);
+            if (!todo) return;
+            state.currentEditingId = id;
+            editInput.value = todo.text;
+            editMemo.value = todo.memo || '';
+            editDate.value = todo.date;
+            editEndDate.min = todo.date;
+            editEndDate.value = todo.endDate;
+            
+            state.editingCost = todo.cost || 1;
+            updateEditCostStars(state.editingCost);
+            
+            editModal.classList.remove('hidden');
+        }
+
+        function closeEditModal() {
+            editModal.classList.add('hidden');
+            state.currentEditingId = null;
+        }
+
+        function updateEditCostStars(costValue) {
+            editCostSelector.querySelectorAll('button').forEach(b => {
+                if (parseInt(b.getAttribute('data-cost')) <= costValue) {
+                    b.classList.remove('text-gray-300'); b.classList.add('text-amber-400');
+                } else {
+                    b.classList.remove('text-amber-400'); b.classList.add('text-gray-300');
+                }
+            });
+        }
+
+        editCostSelector.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                state.editingCost = parseInt(e.currentTarget.getAttribute('data-cost'));
+                updateEditCostStars(state.editingCost);
+            });
+        });
+
+        btnEditSave.addEventListener('click', () => {
+            if (!editInput.value.trim()) return;
+            state.todos = state.todos.map(todo => {
+                if (todo.id === state.currentEditingId) {
+                    return {
+                        ...todo,
+                        text: editInput.value.trim(),
+                        memo: editMemo.value.trim(),
+                        cost: state.editingCost, 
+                        date: editDate.value,
+                        endDate: editEndDate.value
+                    };
+                }
+                return todo;
+            });
+            closeEditModal();
+            saveData();
+        });
+
+        btnEditCancel.addEventListener('click', closeEditModal);
+
+        function toggleTodo(id) {
+            state.todos = state.todos.map(todo => {
+                if (todo.id === id) {
+                    const isNowCompleted = !todo.completed;
+                    return { ...todo, completed: isNowCompleted, completedAt: isNowCompleted ? Date.now() : null };
+                }
+                return todo;
+            });
+            saveData();
+        }
+
+        function deleteTodo(id) {
+            if(confirm("削除しますか？")) { state.todos = state.todos.filter(todo => todo.id !== id); saveData(); }
+        }
+
+        costSelector.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                state.settings.currentCost = parseInt(e.currentTarget.getAttribute('data-cost'));
+                costSelector.querySelectorAll('button').forEach(b => {
+                    if (parseInt(b.getAttribute('data-cost')) <= state.settings.currentCost) { b.classList.remove('text-gray-300'); b.classList.add('text-amber-400'); }
+                    else { b.classList.remove('text-amber-400'); b.classList.add('text-gray-300'); }
+                });
+            });
+        });
+
+        function updateSortButtons(activeBtn) {
+            [sortDateBtn, sortNameBtn, sortCostBtn].forEach(btn => {
+                if (btn === activeBtn) {
+                    btn.className = "px-2 py-1 rounded bg-white text-indigo-600 font-medium shadow-sm transition";
+                } else {
+                    btn.className = "px-2 py-1 rounded text-gray-500 hover:text-gray-700 transition";
+                }
+            });
+        }
+
+        sortDateBtn.addEventListener('click', () => {
+            state.sortBy = 'date';
+            updateSortButtons(sortDateBtn);
+            render();
+        });
+
+        sortNameBtn.addEventListener('click', () => {
+            state.sortBy = 'name';
+            updateSortButtons(sortNameBtn);
+            render();
+        });
+
+        sortCostBtn.addEventListener('click', () => {
+            state.sortBy = 'cost';
+            updateSortButtons(sortCostBtn);
+            render();
+        });
+
+        todoForm.addEventListener('submit', (e) => {
+            e.preventDefault(); if (!todoInput.value.trim()) return;
+            addTodo(todoInput.value.trim(), todoMemo.value.trim(), todoDate.value, todoEndDate.value, state.settings.currentCost);
+            todoInput.value = ''; todoMemo.value = '';
+        });
+
+        btnTimerStart.addEventListener('click', () => startTimer(true)); 
+        btnTimerPause.addEventListener('click', pauseTimer); 
+        btnTimerReset.addEventListener('click', resetTimer);
+        
+        btnSoundToggle.addEventListener('click', () => {
+            state.settings.soundOn = !state.settings.soundOn;
+            soundIcon.className = state.settings.soundOn ? "fa-solid fa-volume-high" : "fa-solid fa-volume-xmark";
+        });
+
+        function escapeHTML(str) { return str ? str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)) : ''; }
+
+        btnLogin.addEventListener('click', async () => {
+            try { await signInWithPopup(auth, provider); } catch (e) { alert("ログインに失敗しました。Firebaseの設定（承認済みドメイン）を確認してください。"); }
+        });
+        btnLogout.addEventListener('click', () => {
+            if (unsubscribeFirestore) unsubscribeFirestore();
+            signOut(auth);
+        });
+        
+        onAuthStateChanged(auth, (user) => {
+            if (user) { 
+                state.user = user; 
+                userName.textContent = user.displayName; 
+                userAvatar.src = user.photoURL; 
+                btnLogin.classList.add('hidden'); 
+                userProfile.classList.remove('hidden');
+                startRealtimeSync(); 
+            }
+            else { 
+                state.user = null; 
+                btnLogin.classList.remove('hidden'); 
+                userProfile.classList.add('hidden'); 
+                if (unsubscribeFirestore) unsubscribeFirestore();
+                state.todos = JSON.parse(localStorage.getItem('studydesk_todos')) || [];
+                state.pomodoroCount = parseInt(localStorage.getItem('studydesk_pomo')) || 0;
+                cleanExpiredTodos();
+                render();
+            }
+        });
+        
+        setInterval(() => { if (state.todos.some(t => t.completed)) { cleanExpiredTodos(); render(); } }, 60000);
+    </script>
+</body>
+</html>
