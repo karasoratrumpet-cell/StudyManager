@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>StudyManager - ポモドーロ ＆ TODOタスクマネージャー</title>
+    <link rel="icon" type="image/png" href="image.png">
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
@@ -29,7 +31,7 @@
 
     <nav class="bg-white shadow-sm border-b border-gray-200 px-6 py-3 flex justify-between items-center">
         <h1 class="text-xl font-bold text-indigo-600 flex items-center gap-2">
-            <i class="fa-solid fa-graduation-cap"></i> StudyManager
+            <img src="image.png" alt="StudyManager Icon" class="w-7 h-7 object-contain rounded-md shadow-sm"> StudyManager
         </h1>
         <div id="auth-section">
             <button id="btn-login" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition">
@@ -49,9 +51,14 @@
             <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 text-center">
                 <div class="flex justify-between items-center mb-4">
                     <span id="timer-status" class="text-xs font-bold uppercase tracking-wider bg-red-100 text-red-700 px-3 py-1 rounded-full">集中 (25分)</span>
-                    <button id="btn-sound-toggle" class="text-gray-500 hover:text-indigo-600 transition text-lg">
-                        <i id="sound-icon" class="fa-solid fa-volume-high"></i>
-                    </button>
+                    <div class="flex items-center gap-3">
+                        <button id="btn-timer-skip" class="text-gray-400 hover:text-indigo-600 transition text-sm flex items-center gap-1 font-medium" title="次のモードへスキップ">
+                            スキップ <i class="fa-solid fa-forward"></i>
+                        </button>
+                        <button id="btn-sound-toggle" class="text-gray-500 hover:text-indigo-600 transition text-lg">
+                            <i id="sound-icon" class="fa-solid fa-volume-high"></i>
+                        </button>
+                    </div>
                 </div>
                 <div id="timer-display" class="text-6xl font-mono font-bold text-gray-900 my-6">25:00</div>
                 <div class="flex justify-center gap-3">
@@ -243,6 +250,7 @@
         const btnTimerStart = document.getElementById('btn-timer-start');
         const btnTimerPause = document.getElementById('btn-timer-pause');
         const btnTimerReset = document.getElementById('btn-timer-reset');
+        const btnTimerSkip = document.getElementById('btn-timer-skip'); 
         const btnSoundToggle = document.getElementById('btn-sound-toggle');
         const soundIcon = document.getElementById('sound-icon');
         
@@ -277,7 +285,6 @@
         const userAvatar = document.getElementById('user-avatar');
         const userName = document.getElementById('user-name');
 
-        // ローカルの正確な「YYYY-MM-DD」を返す補助関数
         function getLocalDateString(dateObj = new Date()) {
             const year = dateObj.getFullYear();
             const month = String(dateObj.getMonth() + 1).padStart(2, '0');
@@ -468,6 +475,24 @@
             saveData(); 
         }
 
+        function skipTimerMode() {
+            clearInterval(state.timer.intervalId);
+            state.timer.isRunning = false;
+
+            if (!state.timer.isBreak) {
+                state.timer.isBreak = true;
+                state.timer.minutes = 5;
+            } else {
+                state.timer.isBreak = false;
+                state.timer.minutes = 25;
+            }
+            state.timer.seconds = 0;
+
+            syncUIForMode();
+            state.timer.lastServerSync = Date.now();
+            saveData();
+        }
+
         function render() {
             todoList.innerHTML = '';
             if (state.todos.length === 0) {
@@ -520,7 +545,6 @@
                 });
             }
 
-            // 【修正】タイムゾーンズレを回避し、今日期間（開始日～終了日）に該当するタスクを正確に判定
             const todayStr = getLocalDateString();
             const todayTodos = state.todos.filter(t => todayStr >= t.date && todayStr <= t.endDate);
             const todayCompleted = todayTodos.filter(t => t.completed).length;
@@ -528,7 +552,6 @@
             statCompleted.textContent = state.todos.filter(t => t.completed).length;
             statPomodoros.textContent = state.pomodoroCount;
             
-            // 進捗バーと％テキストの完全連動アップデート
             const percent = todayTodos.length > 0 ? Math.round((todayCompleted / todayTodos.length) * 100) : 0;
             progressBar.style.width = `${percent}%`; 
             progressPercent.textContent = `${percent}%`;
@@ -666,6 +689,7 @@
         btnTimerStart.addEventListener('click', () => startTimer(true)); 
         btnTimerPause.addEventListener('click', pauseTimer); 
         btnTimerReset.addEventListener('click', resetTimer);
+        btnTimerSkip.addEventListener('click', skipTimerMode); 
         
         btnSoundToggle.addEventListener('click', () => {
             state.settings.soundOn = !state.settings.soundOn;
