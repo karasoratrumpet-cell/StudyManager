@@ -291,7 +291,6 @@
             clearInterval(timer.intervalId);
             timer.isRunning = false; timer.currentMode = mode; timer.minutes = mins; timer.seconds = 0;
             btnStart.innerHTML = `<i class="fa-solid fa-play"></i><span>タイマーを開始する</span>`;
-            btnStart.className = "flex-1 py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/30 transition flex items-center justify-center space-x-2 text-base";
             
             [btnPomoMode, btnShortMode, btnLongMode].forEach(b => b.className = "px-4 py-1.5 text-xs font-semibold rounded-lg text-slate-400 hover:text-slate-200");
             if (mode === 'pomo') { btnPomoMode.className = "px-4 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 text-white shadow"; timerLabel.textContent = "集中セッション"; }
@@ -313,11 +312,9 @@
             if (timer.isRunning) {
                 clearInterval(timer.intervalId); timer.isRunning = false;
                 btnStart.innerHTML = `<i class="fa-solid fa-play"></i><span>タイマーを再開する</span>`;
-                btnStart.className = "flex-1 py-4 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl shadow-lg transition flex items-center justify-center space-x-2 text-base";
             } else {
                 timer.isRunning = true;
                 btnStart.innerHTML = `<i class="fa-solid fa-pause"></i><span>タイマーを一時停止</span>`;
-                btnStart.className = "flex-1 py-4 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-xl transition flex items-center justify-center space-x-2 text-base";
                 timer.intervalId = setInterval(tick, 1000);
                 playBeep('click');
             }
@@ -420,7 +417,7 @@
             // 本日のタスク
             const todayTasks = state.todos.filter(t => !t.completed && t.date <= todayStr && todayStr <= t.endDate);
             countTodayTasks.textContent = `${todayTasks.length}件`;
-            todayTasksContainer.innerHTML = todayTasks.length === 0 ? `<p class="text-xs text-slate-500 py-4 text-center">本日期限の未完了タスクはありません</p>` : todayTasks.map(t => `
+            todayTasksContainer.innerHTML = todayTasks.length === 0 ? `<p class="text-xs text-slate-500 py-4 text-center">本日期限의 미완료 태스크가 없습니다</p>` : todayTasks.map(t => `
                 <div class="flex justify-between items-center py-2.5 text-xs">
                     <span class="font-medium text-slate-200 truncate max-w-[70%]">${escapeHtml(t.text)}</span>
                     <span class="text-[10px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-bold">★ ${t.cost} (〜${t.endDate.split('-')[2]}日)</span>
@@ -459,7 +456,7 @@
                 </div>
             `).join('');
 
-            // カレンダー同期用イベント（★マークのコスト表示を除去）
+            // カレンダー同期用イベント
             const calendarEvents = state.todos.map(todo => {
                 let end = new Date(todo.endDate); end.setDate(end.getDate() + 1);
                 return { id: todo.id, title: todo.text, start: todo.date, end: end.toISOString().split('T')[0], allDay: true, backgroundColor: todo.completed ? '#9ca3af' : '#6366f1', borderColor: todo.completed ? '#9ca3af' : '#6366f1', textColor: '#ffffff' };
