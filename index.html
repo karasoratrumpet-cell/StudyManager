@@ -3,731 +3,640 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StudyManager - ポモドーロ ＆ TODOタスクマネージャー</title>
-    <link rel="icon" type="image/png" href="image.png">
-    
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>ポモドーロ・TODO・カレンダー アプリ</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+    
     <style>
-        .fc-theme-standard td, .fc-theme-standard th { border-color: #e5e7eb; }
-        .fc .fc-button-primary { background-color: #3b82f6; border-color: #3b82f6; }
-        .fc .fc-button-primary:hover { background-color: #2563eb; border-color: #2563eb; }
-        .fc .fc-toolbar-title { font-size: 1.25rem !important; font-weight: 700; }
-        .fc .fc-button { font-size: 0.75rem !important; padding: 0.4rem 0.8rem !important; }
-        
-        .fc-event .fc-event-title {
-            white-space: normal !important;
-            overflow-wrap: break-word !important;
-            word-break: break-all !important;
+        :root {
+            --bg-color: #f4f6f9;
+            --container-bg: #ffffff;
+            --text-main: #333333;
+            --text-muted: #666666;
+            --border-color: #e0e0e0;
+            --primary-color: #4a90e2;
+            --primary-hover: #357abd;
+            --danger-color: #e74c3c;
+            --danger-hover: #c0392b;
+            --success-color: #2ecc71;
+            --shadow: 0 4px 6px rgba(0,0,0,0.05);
+            --cal-header-bg: #f8f9fa;
+            --cal-today-bg: #e8f0fe;
         }
-        .fc-event {
-            padding: 2px 4px !important;
+
+        [data-theme="dark"] {
+            --bg-color: #121212;
+            --container-bg: #1e1e1e;
+            --text-main: #e0e0e0;
+            --text-muted: #aaaaaa;
+            --border-color: #333333;
+            --primary-color: #3782df;
+            --primary-hover: #4a90e2;
+            --danger-color: #cf6679;
+            --danger-hover: #e74c3c;
+            --success-color: #03dac6;
+            --shadow: 0 4px 6px rgba(0,0,0,0.3);
+            --cal-header-bg: #2a2a2a;
+            --cal-today-bg: #1a365d;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+            transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 1200px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+        }
+
+        @media (max-width: 900px) {
+            .app-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel {
+            background-color: var(--container-bg);
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border-color);
+        }
+
+        .panel-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+
+        /* テーマ切り替えボタン */
+        .theme-toggle {
+            background: none;
+            border: none;
+            color: var(--text-main);
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 5px;
+        }
+
+        /* ポモドーロタイマー */
+        .timer-display {
+            font-size: 4rem;
+            font-weight: 700;
+            text-align: center;
+            margin: 20px 0;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .timer-controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.95rem;
+        }
+
+        .btn-primary { background-color: var(--primary-color); color: white; }
+        .btn-primary:hover { background-color: var(--primary-hover); }
+        .btn-danger { background-color: var(--danger-color); color: white; }
+        .btn-danger:hover { background-color: var(--danger-hover); }
+        .btn-secondary { background-color: var(--border-color); color: var(--text-main); }
+
+        /* TODOリストフォーム */
+        .todo-form {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        input[type="text"], input[type="date"], select {
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background-color: var(--container-bg);
+            color: var(--text-main);
+            font-size: 0.95rem;
+        }
+
+        input[type="text"] { flex: 1; }
+
+        /* 星評価 (コスト) */
+        .star-rating {
+            display: flex;
+            flex-direction: row-reverse;
+            justify-content: flex-end;
+            gap: 5px;
+            font-size: 1.25rem;
+        }
+
+        .star-rating input { display: none; }
+        .star-rating label {
+            color: var(--border-color);
+            cursor: pointer;
+        }
+
+        .star-rating label:hover,
+        .star-rating label:hover ~ label,
+        .star-rating input:checked ~ label {
+            color: #f1c40f;
+        }
+
+        /* タスクリスト */
+        .task-list {
+            list-style: none;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .task-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            margin-bottom: 8px;
+            background-color: var(--bg-color);
+        }
+
+        .task-item.completed .task-text {
+            text-decoration: line-through;
+            color: var(--text-muted);
+        }
+
+        .task-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+        }
+
+        .task-details {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .task-date {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .task-cost {
+            color: #f1c40f;
+            font-size: 0.85rem;
+        }
+
+        .task-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .icon-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px;
+            font-size: 1rem;
+        }
+        .icon-btn.complete { color: var(--success-color); }
+        .icon-btn.delete { color: var(--danger-color); }
+
+        /* カレンダー */
+        .calendar-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            border-top: 1px solid var(--border-color);
+            border-left: 1px solid var(--border-color);
+        }
+
+        .calendar-header-cell {
+            background-color: var(--cal-header-bg);
+            padding: 8px 0;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.85rem;
+            border-right: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .calendar-cell {
+            min-height: 85px;
+            padding: 6px;
+            border-right: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
+            position: relative;
+            background-color: var(--container-bg);
+        }
+
+        .calendar-cell.other-month {
+            opacity: 0.4;
+        }
+
+        .calendar-cell.today {
+            background-color: var(--cal-today-bg);
+        }
+
+        .day-number {
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        .calendar-tasks {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            max-height: 60px;
+            overflow-y: auto;
+        }
+
+        .calendar-task-indicator {
+            font-size: 0.7rem;
+            padding: 2px 4px;
+            background-color: var(--primary-color);
+            color: white;
+            border-radius: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            cursor: pointer;
+        }
+
+        .calendar-task-indicator.completed {
+            background-color: var(--text-muted);
+            text-decoration: line-through;
+            opacity: 0.7;
         }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800 font-sans">
+<body>
 
-    <nav class="bg-white shadow-sm border-b border-gray-200 px-6 py-3 flex justify-between items-center">
-        <h1 class="text-xl font-bold text-indigo-600 flex items-center gap-2">
-            <img src="image.png" alt="StudyManager Icon" class="w-7 h-7 object-contain rounded-md shadow-sm"> StudyManager
-        </h1>
-        <div id="auth-section">
-            <button id="btn-login" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition">
-                <i class="fa-brands fa-google"></i> Googleログイン
-            </button>
-            <div id="user-profile" class="hidden flex items-center gap-3">
-                <img id="user-avatar" class="w-8 h-8 rounded-full border" src="" alt="User Avatar">
-                <span id="user-name" class="text-sm font-medium text-gray-700"></span>
-                <button id="btn-logout" class="text-gray-500 hover:text-red-600 text-sm font-medium transition">ログアウト</button>
-            </div>
-        </div>
-    </nav>
-
-    <main class="max-w-7xl mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        <div class="space-y-6">
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 text-center">
-                <div class="flex justify-between items-center mb-4">
-                    <span id="timer-status" class="text-xs font-bold uppercase tracking-wider bg-red-100 text-red-700 px-3 py-1 rounded-full">集中 (25分)</span>
-                    <div class="flex items-center gap-3">
-                        <button id="btn-timer-skip" class="text-gray-400 hover:text-indigo-600 transition text-sm flex items-center gap-1 font-medium" title="次のモードへスキップ">
-                            スキップ <i class="fa-solid fa-forward"></i>
-                        </button>
-                        <button id="btn-sound-toggle" class="text-gray-500 hover:text-indigo-600 transition text-lg">
-                            <i id="sound-icon" class="fa-solid fa-volume-high"></i>
-                        </button>
-                    </div>
-                </div>
-                <div id="timer-display" class="text-6xl font-mono font-bold text-gray-900 my-6">25:00</div>
-                <div class="flex justify-center gap-3">
-                    <button id="btn-timer-start" class="bg-red-500 hover:bg-red-600 text-white font-medium px-6 py-2.5 rounded-xl transition flex items-center gap-2 w-28 justify-center">
-                        <i class="fa-solid fa-play"></i> 開始
+    <div class="app-container">
+        <div class="left-column" style="display: flex; flex-direction: column; gap: 25px;">
+            <div class="panel">
+                <div class="panel-title">
+                    <span><i class="fa-solid fa-clock"></i> ポモドーロタイマー</span>
+                    <button class="theme-toggle" id="themeToggle" title="テーマ切り替え">
+                        <i class="fa-solid fa-moon"></i>
                     </button>
-                    <button id="btn-timer-pause" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium px-6 py-2.5 rounded-xl transition flex items-center gap-2 w-28 justify-center hidden">
-                        <i class="fa-solid fa-pause"></i> 一時停止
-                    </button>
-                    <button id="btn-timer-reset" class="bg-gray-100 hover:bg-gray-200 text-gray-500 font-medium px-4 py-2.5 rounded-xl transition">リセット</button>
+                </div>
+                <div class="timer-display" id="timerDisplay">25:00</div>
+                <div class="timer-controls">
+                    <button class="btn-primary" id="startStopBtn"><i class="fa-solid fa-play"></i> スタート</button>
+                    <button class="btn-secondary" id="resetBtn"><i class="fa-solid fa-rotate-right"></i> リセット</button>
+                </div>
+                <div style="display: flex; justify-content: center; gap: 10px;">
+                    <button class="btn-secondary" onclick="setTimer(25)">ポモドーロ (25分)</button>
+                    <button class="btn-secondary" onclick="setTimer(5)">短い休憩 (5分)</button>
                 </div>
             </div>
 
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-                <h3 class="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <i class="fa-solid fa-fire text-orange-500"></i> 今日の進捗
-                </h3>
-                <div class="space-y-4">
-                    <div>
-                        <div class="flex justify-between text-sm mb-1">
-                            <span class="text-gray-500">完了率</span>
-                            <span id="progress-percent" class="font-semibold text-indigo-600">0%</span>
-                        </div>
-                        <div class="w-full bg-gray-100 h-2.5 rounded-full overflow-hidden">
-                            <div id="progress-bar" class="bg-indigo-600 h-full transition-all duration-500" style="width: 0%"></div>
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-3 pt-2">
-                        <div class="bg-gray-50 p-3 rounded-xl border border-gray-100 text-center">
-                            <div class="text-xs text-gray-400 font-medium">累計完了</div>
-                            <div id="stat-completed" class="text-xl font-bold text-gray-800 mt-1">0</div>
-                        </div>
-                        <div class="bg-gray-50 p-3 rounded-xl border border-gray-100 text-center">
-                            <div class="text-xs text-gray-400 font-medium">ポモドーロ</div>
-                            <div id="stat-pomodoros" class="text-xl font-bold text-gray-800 mt-1">0</div>
-                        </div>
-                    </div>
+            <div class="panel">
+                <div class="panel-title">
+                    <span><i class="fa-solid fa-list-check"></i> タスクリスト</span>
                 </div>
+                <form class="todo-form" id="todoForm" onsubmit="addTask(event)">
+                    <div class="form-row">
+                        <input type="text" id="taskInput" placeholder="新しいタスクを入力..." required>
+                        <input type="date" id="dateInput" required>
+                    </div>
+                    <div class="form-row" style="justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.9rem; color: var(--text-muted);">コスト (最大3):</span>
+                        <div class="star-rating">
+                            <input type="radio" id="star3" name="cost" value="3"><label for="star3" class="fa-solid fa-star"></label>
+                            <input type="radio" id="star2" name="cost" value="2"><label for="star2" class="fa-solid fa-star"></label>
+                            <input type="radio" id="star1" name="cost" value="1" checked><label for="star1" class="fa-solid fa-star"></label>
+                        </div>
+                        <button type="submit" class="btn-primary"><i class="fa-solid fa-plus"></i> 追加</button>
+                    </div>
+                </form>
+                <ul class="task-list" id="taskList"></ul>
             </div>
         </div>
 
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 flex flex-col h-[calc(100vh-120px)] min-h-[650px] w-full min-w-0">
-            <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
-                <h3 class="font-bold text-gray-900 flex items-center gap-2">
-                    <i class="fa-solid fa-list-check text-indigo-500"></i> TODOリスト
-                </h3>
-                <div class="flex items-center gap-1 bg-gray-100 p-1 rounded-lg text-[11px] shrink-0">
-                    <button id="sort-date" class="px-2 py-1 rounded bg-white text-indigo-600 font-medium shadow-sm transition">日付順</button>
-                    <button id="sort-name" class="px-2 py-1 rounded text-gray-500 hover:text-gray-700 transition">名前順</button>
-                    <button id="sort-cost" class="px-2 py-1 rounded text-gray-500 hover:text-gray-700 transition">コスト順</button>
-                </div>
+        <div class="panel">
+            <div class="panel-title">
+                <span><i class="fa-solid fa-calendar-days"></i> カレンダー連動</span>
             </div>
-
-            <form id="todo-form" class="space-y-3 mb-4">
-                <input type="text" id="todo-input" placeholder="タスクのタイトルを入力..." required class="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
-                <textarea id="todo-memo" placeholder="メモ・詳細を追加（省略可）..." rows="2" class="w-full px-4 py-2 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs resize-none"></textarea>
-
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="block text-[10px] text-gray-400 font-medium mb-0.5">開始日</label>
-                        <input type="date" id="todo-date" required class="w-full text-xs border border-gray-200 p-2 rounded-xl text-gray-600 focus:outline-none focus:ring-1 focus:ring-indigo-500">
-                    </div>
-                    <div>
-                        <label class="block text-[10px] text-gray-400 font-medium mb-0.5">終了日</label>
-                        <input type="date" id="todo-end-date" required class="w-full text-xs border border-gray-200 p-2 rounded-xl text-gray-600 focus:outline-none focus:ring-1 focus:ring-indigo-500">
-                    </div>
-                </div>
-                <div class="flex gap-2 items-center justify-between pt-1">
-                    <div class="flex items-center gap-1.5">
-                        <div class="flex gap-0.5" id="cost-selector">
-                            <button type="button" data-cost="1" class="cost-star text-amber-400 text-sm"><i class="fa-solid fa-star"></i></button>
-                            <button type="button" data-cost="2" class="cost-star text-gray-300 text-sm"><i class="fa-solid fa-star"></i></button>
-                            <button type="button" data-cost="3" class="cost-star text-gray-300 text-sm"><i class="fa-solid fa-star"></i></button>
-                            <button type="button" data-cost="4" class="cost-star text-gray-300 text-sm"><i class="fa-solid fa-star"></i></button>
-                            <button type="button" data-cost="5" class="cost-star text-gray-300 text-sm"><i class="fa-solid fa-star"></i></button>
-                        </div>
-                    </div>
-                    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-5 py-2.5 rounded-xl transition shadow-sm">タスクを追加</button>
-                </div>
-            </form>
-
-            <div id="todo-list" class="flex-1 overflow-y-auto space-y-2 pr-1 w-full min-w-0">
-                <p class="text-center text-gray-400 text-xs py-8">タスクがありません</p>
+            <div class="calendar-nav">
+                <button class="btn-secondary" id="prevMonth"><i class="fa-solid fa-chevron-left"></i></button>
+                <h3 id="calendarMonthYear"></h3>
+                <button class="btn-secondary" id="nextMonth"><i class="fa-solid fa-chevron-right"></i></button>
             </div>
-        </div>
-
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 lg:p-6 flex flex-col h-[calc(100vh-120px)] min-h-[650px]">
-            <h3 class="font-bold text-gray-900 mb-3 flex items-center gap-2">
-                <i class="fa-regular fa-calendar-days text-emerald-500"></i> カレンダー
-            </h3>
-            <div id="calendar" class="text-xs flex-1"></div>
-        </div>
-    </main>
-
-    <div id="edit-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl space-y-4">
-            <h4 class="text-base font-bold text-gray-900 flex items-center gap-2">
-                <i class="fa-solid fa-pen-to-square text-indigo-500"></i> タスクの編集
-            </h4>
-            <div class="space-y-3">
-                <div>
-                    <label class="block text-xs font-medium text-gray-500 mb-1">タイトル</label>
-                    <input type="text" id="edit-input" class="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                </div>
-                <div>
-                    <label class="block text-xs font-medium text-gray-500 mb-1">メモ</label>
-                    <textarea id="edit-memo" rows="3" class="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"></textarea>
-                </div>
-                <div>
-                    <label class="block text-xs font-medium text-gray-500 mb-1">コスト (重要度・作業量)</label>
-                    <div class="flex gap-1" id="edit-cost-selector">
-                        <button type="button" data-cost="1" class="edit-cost-star text-gray-300 text-base"><i class="fa-solid fa-star"></i></button>
-                        <button type="button" data-cost="2" class="edit-cost-star text-gray-300 text-base"><i class="fa-solid fa-star"></i></button>
-                        <button type="button" data-cost="3" class="edit-cost-star text-gray-300 text-base"><i class="fa-solid fa-star"></i></button>
-                        <button type="button" data-cost="4" class="edit-cost-star text-gray-300 text-base"><i class="fa-solid fa-star"></i></button>
-                        <button type="button" data-cost="5" class="edit-cost-star text-gray-300 text-base"><i class="fa-solid fa-star"></i></button>
-                    </div>
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="block text-xs font-medium text-gray-500 mb-1">開始日</label>
-                        <input type="date" id="edit-date" class="w-full text-xs border border-gray-200 p-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-medium text-gray-500 mb-1">終了日</label>
-                        <input type="date" id="edit-end-date" class="w-full text-xs border border-gray-200 p-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    </div>
-                </div>
-            </div>
-            <div class="flex justify-end gap-2 pt-2">
-                <button id="btn-edit-cancel" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-500 text-xs font-medium rounded-xl transition">キャンセル</button>
-                <button id="btn-edit-save" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-xl transition shadow-sm">変更を保存</button>
-            </div>
+            <div class="calendar-grid" id="calendarGrid"></div>
         </div>
     </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyAApuzoBkA8dTXOoPKoFxVvkNXCrRJM-mw",
-            authDomain: "studymanager-b3652.firebaseapp.com",
-            projectId: "studymanager-b3652",
-            storageBucket: "studymanager-b3652.firebasestorage.app",
-            messagingSenderId: "705916367748",
-            appId: "1:705916367748:web:24581f6150a8884d9423d1"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const provider = new GoogleAuthProvider();
-
-        let state = {
-            user: null,
-            todos: [],
-            pomodoroCount: 0,
-            sortBy: 'date', 
-            currentEditingId: null,
-            editingCost: 1, 
-            settings: { soundOn: true, currentCost: 1 },
-            timer: { minutes: 25, seconds: 0, isBreak: false, isRunning: false, intervalId: null, lastServerSync: 0 }
-        };
-
-        let unsubscribeFirestore = null;
-        let isLocalTimerChange = false; 
-
-        function playAlarmSound() {
-            if (!state.settings.soundOn) return;
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const playTone = (freq, start, duration) => {
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(freq, start);
-                gain.gain.setValueAtTime(1.0, start); 
-                gain.gain.exponentialRampToValueAtTime(0.00001, start + duration);
-                osc.connect(gain); gain.connect(audioCtx.destination);
-                osc.start(start); osc.stop(start + duration);
-            };
-            playTone(523.25, audioCtx.currentTime, 0.3);
-            playTone(659.25, audioCtx.currentTime + 0.15, 0.4);
-        }
-
-        const timerDisplay = document.getElementById('timer-display');
-        const timerStatus = document.getElementById('timer-status');
-        const btnTimerStart = document.getElementById('btn-timer-start');
-        const btnTimerPause = document.getElementById('btn-timer-pause');
-        const btnTimerReset = document.getElementById('btn-timer-reset');
-        const btnTimerSkip = document.getElementById('btn-timer-skip'); 
-        const btnSoundToggle = document.getElementById('btn-sound-toggle');
-        const soundIcon = document.getElementById('sound-icon');
+    <script>
+        // --- 状態管理 ---
+        let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+        let currentTheme = localStorage.getItem('theme') || 'light';
         
-        const todoForm = document.getElementById('todo-form');
-        const todoInput = document.getElementById('todo-input');
-        const todoMemo = document.getElementById('todo-memo');
-        const todoDate = document.getElementById('todo-date');
-        const todoEndDate = document.getElementById('todo-end-date');
-        const todoList = document.getElementById('todo-list');
-        const costSelector = document.getElementById('cost-selector');
-        
-        const sortDateBtn = document.getElementById('sort-date');
-        const sortNameBtn = document.getElementById('sort-name');
-        const sortCostBtn = document.getElementById('sort-cost');
-        
-        const editModal = document.getElementById('edit-modal');
-        const editInput = document.getElementById('edit-input');
-        const editMemo = document.getElementById('edit-memo');
-        const editCostSelector = document.getElementById('edit-cost-selector');
-        const editDate = document.getElementById('edit-date');
-        const editEndDate = document.getElementById('edit-end-date');
-        const btnEditCancel = document.getElementById('btn-edit-cancel');
-        const btnEditSave = document.getElementById('btn-edit-save');
+        // タイマー状態
+        let timerInterval = null;
+        let timeRemaining = 25 * 60;
+        let isRunning = false;
 
-        const progressBar = document.getElementById('progress-bar');
-        const progressPercent = document.getElementById('progress-percent');
-        const statCompleted = document.getElementById('stat-completed');
-        const statPomodoros = document.getElementById('stat-pomodoros');
-        const btnLogin = document.getElementById('btn-login');
-        const btnLogout = document.getElementById('btn-logout');
-        const userProfile = document.getElementById('user-profile');
-        const userAvatar = document.getElementById('user-avatar');
-        const userName = document.getElementById('user-name');
+        // カレンダー状態
+        let currentCalendarDate = new Date();
 
-        function getLocalDateString(dateObj = new Date()) {
-            const year = dateObj.getFullYear();
-            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-            const day = String(dateObj.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-        }
-
-        const todayInit = getLocalDateString();
-        todoDate.value = todayInit; todoEndDate.value = todayInit;
+        // --- 初期化 ---
+        document.documentElement.setAttribute('data-theme', currentTheme);
+        updateThemeIcon();
+        initCalendarHeaders();
+        updateCalendar();
+        renderTasks();
         
-        todoDate.addEventListener('change', () => {
-            todoEndDate.min = todoDate.value;
-            if (todoEndDate.value < todoDate.value) todoEndDate.value = todoDate.value;
+        // 今日をデフォルトの日付にする
+        document.getElementById('dateInput').value = new Date().toISOString().split('T')[0];
+
+        // --- テーマ切り替え ---
+        document.getElementById('themeToggle').addEventListener('click', () => {
+            currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', currentTheme);
+            localStorage.setItem('theme', currentTheme);
+            updateThemeIcon();
         });
 
-        editDate.addEventListener('change', () => {
-            editEndDate.min = editDate.value;
-            if (editEndDate.value < editDate.value) editEndDate.value = editDate.value;
-        });
-
-        let calendar;
-        const calendarEl = document.getElementById('calendar');
-        calendar = new FullCalendar.Calendar(calendarEl, {
-            initialView: 'dayGridMonth',
-            locale: 'ja',
-            headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,dayGridWeek' },
-            buttonText: { month: '月', week: '週', today: '今日' },
-            editable: true,
-            events: [],
-            eventClick: function(info) {
-                openEditModal(info.event.id);
+        function updateThemeIcon() {
+            const icon = document.getElementById('themeToggle').querySelector('i');
+            if (currentTheme === 'dark') {
+                icon.className = 'fa-solid fa-sun';
+            } else {
+                icon.className = 'fa-solid fa-moon';
             }
-        });
-        calendar.render();
-
-        function cleanExpiredTodos() {
-            const now = Date.now();
-            const oneDayMs = 24 * 60 * 60 * 1000;
-            state.todos = state.todos.filter(todo => {
-                if (todo.completed && todo.completedAt) return (now - todo.completedAt) < oneDayMs;
-                return true;
-            });
         }
 
-        async function saveData() {
-            cleanExpiredTodos();
-            if (state.user) {
-                try {
-                    isLocalTimerChange = true;
-                    const payload = {
-                        todos: state.todos,
-                        pomodoroCount: state.pomodoroCount,
-                        timerState: {
-                            isBreak: state.timer.isBreak,
-                            isRunning: state.timer.isRunning,
-                            minutes: state.timer.minutes,
-                            seconds: state.timer.seconds,
-                            serverTimestamp: Date.now()
-                        }
-                    };
-                    await setDoc(doc(db, "users", state.user.uid), payload);
-                } catch (e) { console.error("Save Error: ", e); }
-            } else {
-                localStorage.setItem('studydesk_todos', JSON.stringify(state.todos));
-                localStorage.setItem('studydesk_pomo', state.pomodoroCount);
-            }
-            render();
+        // --- ポモドーロタイマー機能 ---
+        const timerDisplay = document.getElementById('timerDisplay');
+        const startStopBtn = document.getElementById('startStopBtn');
+        const resetBtn = document.getElementById('resetBtn');
+
+        function updateTimerDisplay() {
+            const minutes = Math.floor(timeRemaining / 60).toString().padStart(2, '0');
+            const seconds = (timeRemaining % 60).toString().padStart(2, '0');
+            timerDisplay.textContent = `${minutes}:${seconds}`;
         }
 
-        function startRealtimeSync() {
-            if (!state.user) return;
-            if (unsubscribeFirestore) unsubscribeFirestore();
-
-            unsubscribeFirestore = onSnapshot(doc(db, "users", state.user.uid), (snapshot) => {
-                if (isLocalTimerChange) {
-                    isLocalTimerChange = false;
-                    return; 
-                }
-                if (snapshot.exists()) {
-                    const data = snapshot.data();
-                    state.todos = data.todos || [];
-                    state.pomodoroCount = data.pomodoroCount || 0;
-
-                    if (data.timerState) {
-                        const srv = data.timerState;
-                        if (srv.serverTimestamp > state.timer.lastServerSync) {
-                            state.timer.lastServerSync = srv.serverTimestamp;
-                            state.timer.isBreak = srv.isBreak;
-                            
-                            if (srv.isRunning) {
-                                const elapsedSec = Math.floor((Date.now() - srv.serverTimestamp) / 1000);
-                                let totalSec = (srv.minutes * 60) + srv.seconds - elapsedSec;
-                                
-                                if (totalSec <= 0) {
-                                    state.timer.minutes = 0;
-                                    state.timer.seconds = 0;
-                                } else {
-                                    state.timer.minutes = Math.floor(totalSec / 60);
-                                    state.timer.seconds = totalSec % 60;
-                                }
-                                if (!state.timer.isRunning) {
-                                    syncUIForMode();
-                                    startTimer(false); 
-                                }
-                            } else {
-                                state.timer.minutes = srv.minutes;
-                                state.timer.seconds = srv.seconds;
-                                if (state.timer.isRunning) {
-                                    clearInterval(state.timer.intervalId);
-                                    state.timer.isRunning = false;
-                                }
-                            }
-                            syncUIForMode();
-                        }
-                    }
-                    cleanExpiredTodos();
-                    render();
-                }
-            });
-        }
-
-        function syncUIForMode() {
-            if (state.timer.isBreak) {
-                timerStatus.textContent = "休憩 (5分)";
-                timerStatus.className = "text-xs font-bold uppercase bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full";
-            } else {
-                timerStatus.textContent = "集中 (25分)";
-                timerStatus.className = "text-xs font-bold uppercase bg-red-100 text-red-700 px-3 py-1 rounded-full";
-            }
-            if (state.timer.isRunning) {
-                btnTimerStart.classList.add('hidden'); btnTimerPause.classList.remove('hidden');
-            } else {
-                btnTimerStart.classList.remove('hidden'); btnTimerPause.classList.add('hidden');
-            }
+        function setTimer(minutes) {
+            clearInterval(timerInterval);
+            isRunning = false;
+            timeRemaining = minutes * 60;
+            startStopBtn.innerHTML = '<i class="fa-solid fa-play"></i> スタート';
             updateTimerDisplay();
         }
 
-        function updateTimerDisplay() {
-            const m = String(state.timer.minutes).padStart(2, '0');
-            const s = String(state.timer.seconds).padStart(2, '0');
-            timerDisplay.textContent = `${m}:${s}`;
-        }
-
-        function startTimer(shouldUpload = true) {
-            if (state.timer.isRunning) return;
-            state.timer.isRunning = true;
-            btnTimerStart.classList.add('hidden'); btnTimerPause.classList.remove('hidden');
-            
-            if (shouldUpload) {
-                state.timer.lastServerSync = Date.now();
-                saveData(); 
-            }
-
-            state.timer.intervalId = setInterval(() => {
-                if (state.timer.seconds === 0) {
-                    if (state.timer.minutes === 0) {
-                        clearInterval(state.timer.intervalId); state.timer.isRunning = false;
-                        playAlarmSound();
-                        
-                        if (!state.timer.isBreak) {
-                            state.pomodoroCount++; state.timer.isBreak = true; state.timer.minutes = 5;
-                        } else {
-                            state.timer.isBreak = false; state.timer.minutes = 25;
-                        }
-                        state.timer.seconds = 0;
-                        syncUIForMode();
-                        saveData(); 
-                        return;
+        startStopBtn.addEventListener('click', () => {
+            if (isRunning) {
+                clearInterval(timerInterval);
+                startStopBtn.innerHTML = '<i class="fa-solid fa-play"></i> スタート';
+            } else {
+                timerInterval = setInterval(() => {
+                    if (timeRemaining > 0) {
+                        timeRemaining--;
+                        updateTimerDisplay();
+                    } else {
+                        clearInterval(timerInterval);
+                        alert('時間になりました！');
+                        setTimer(25);
                     }
-                    state.timer.minutes--; state.timer.seconds = 59;
-                } else state.timer.seconds--;
-                updateTimerDisplay();
-            }, 1000);
-        }
-
-        function pauseTimer() {
-            clearInterval(state.timer.intervalId); state.timer.isRunning = false;
-            btnTimerStart.classList.remove('hidden'); btnTimerPause.classList.add('hidden');
-            state.timer.lastServerSync = Date.now();
-            saveData(); 
-        }
-
-        function resetTimer() {
-            clearInterval(state.timer.intervalId); state.timer.isRunning = false;
-            state.timer.isBreak = false; state.timer.minutes = 25; state.timer.seconds = 0;
-            syncUIForMode();
-            state.timer.lastServerSync = Date.now();
-            saveData(); 
-        }
-
-        function skipTimerMode() {
-            clearInterval(state.timer.intervalId);
-            state.timer.isRunning = false;
-
-            if (!state.timer.isBreak) {
-                state.timer.isBreak = true;
-                state.timer.minutes = 5;
-            } else {
-                state.timer.isBreak = false;
-                state.timer.minutes = 25;
+                }, 1000);
+                startStopBtn.innerHTML = '<i class="fa-solid fa-pause"></i> 一時停止';
             }
-            state.timer.seconds = 0;
+            isRunning = !isRunning;
+        });
 
-            syncUIForMode();
-            state.timer.lastServerSync = Date.now();
-            saveData();
+        resetBtn.addEventListener('click', () => {
+            setTimer(25);
+        });
+
+        // --- TODOリスト機能 ---
+        function saveTasks() {
+            localStorage.setItem('tasks', JSON.stringify(tasks));
+            renderTasks();
+            updateCalendar();
         }
 
-        function render() {
-            todoList.innerHTML = '';
-            if (state.todos.length === 0) {
-                todoList.innerHTML = `<p class="text-center text-gray-400 text-xs py-8">タスクがありません</p>`;
-            } else {
-                let sortedTodos = [...state.todos];
-                if (state.sortBy === 'date') {
-                    sortedTodos.sort((a, b) => new Date(a.date) - new Date(b.date) || a.completed - b.completed);
-                } else if (state.sortBy === 'name') {
-                    sortedTodos.sort((a, b) => a.text.localeCompare(b.text, 'ja') || a.completed - b.completed);
-                } else if (state.sortBy === 'cost') {
-                    sortedTodos.sort((a, b) => b.cost - a.cost || new Date(a.date) - new Date(b.date) || a.completed - b.completed);
-                }
+        function addTask(e) {
+            e.preventDefault();
+            const title = document.getElementById('taskInput').value;
+            const date = document.getElementById('dateInput').value;
+            const cost = parseInt(document.querySelector('input[name="cost"]:checked').value);
 
-                sortedTodos.forEach(todo => {
-                    const todoItem = document.createElement('div');
-                    todoItem.className = `flex flex-col p-3 rounded-xl border transition w-full min-w-0 ${todo.completed ? 'bg-gray-50 border-gray-100 opacity-60' : 'bg-white border-gray-200 shadow-sm'}`;
-                    
-                    let stars = '';
-                    for(let i=1; i<=5; i++) stars += `<i class="fa-solid fa-star text-[10px] ${i <= todo.cost ? 'text-amber-400' : 'text-gray-200'}"></i>`;
-                    const dateDisp = todo.date === todo.endDate ? todo.date : `${todo.date} ～ ${todo.endDate}`;
-                    
-                    const memoHTML = todo.memo ? `<p class="text-xs text-gray-400 mt-1 pl-8 bg-gray-50/50 p-1.5 rounded-lg border border-gray-100/50 break-all font-normal">${escapeHTML(todo.memo)}</p>` : '';
+            const newTask = {
+                id: Date.now().toString(),
+                title,
+                date,
+                cost,
+                completed: false
+            };
 
-                    todoItem.innerHTML = `
-                        <div class="flex items-center justify-between w-full min-w-0 gap-2">
-                            <div class="flex items-center gap-3 min-w-0 flex-1">
-                                <button class="btn-toggle text-xl text-gray-300 hover:text-indigo-600 transition shrink-0">
-                                    <i class="${todo.completed ? 'fa-solid fa-circle-check text-indigo-500' : 'fa-regular fa-circle'}"></i>
-                                </button>
-                                <div class="min-w-0 flex-1">
-                                    <p class="text-sm font-medium ${todo.completed ? 'line-through text-gray-400' : 'text-gray-700'} break-all whitespace-pre-wrap overflow-wrap-anywhere">${escapeHTML(todo.text)}</p>
-                                    <div class="flex items-center flex-wrap gap-2 mt-0.5">
-                                        <span class="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-gray-500 font-mono flex items-center gap-1"><i class="fa-regular fa-calendar text-[9px]"></i> ${dateDisp}</span>
-                                        <div class="flex">${stars}</div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="flex items-center gap-1 shrink-0">
-                                <button class="btn-edit text-gray-300 hover:text-indigo-500 p-1 transition"><i class="fa-regular fa-pen-to-square"></i></button>
-                                <button class="btn-delete text-gray-300 hover:text-red-500 p-1 transition"><i class="fa-regular fa-trash-can"></i></button>
-                            </div>
+            tasks.push(newTask);
+            saveTasks();
+            
+            document.getElementById('taskInput').value = '';
+            document.getElementById('star1').checked = true;
+        }
+
+        function toggleTask(id) {
+            tasks = tasks.map(task => task.id === id ? { ...task, completed: !task.completed } : task);
+            saveTasks();
+        }
+
+        function deleteTask(id) {
+            tasks = tasks.filter(task => task.id !== id);
+            saveTasks();
+        }
+
+        function renderTasks() {
+            const taskList = document.getElementById('taskList');
+            taskList.innerHTML = '';
+
+            // 日付順にソートして表示
+            const sortedTasks = [...tasks].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+            sortedTasks.forEach(task => {
+                const li = document.createElement('li');
+                li.className = `task-item ${task.completed ? 'completed' : ''}`;
+
+                const stars = '★'.repeat(task.cost) + '☆'.repeat(3 - task.cost);
+
+                li.innerHTML = `
+                    <div class="task-info">
+                        <div class="task-details">
+                            <span class="task-text">${escapeHTML(task.title)}</span>
+                            <span class="task-date"><i class="fa-solid fa-calendar-day"></i> ${task.date}</span>
+                            <span class="task-cost">${stars}</span>
                         </div>
-                        ${memoHTML}
-                    `;
-                    todoItem.querySelector('.btn-toggle').addEventListener('click', () => toggleTodo(todo.id));
-                    todoItem.querySelector('.btn-edit').addEventListener('click', () => openEditModal(todo.id));
-                    todoItem.querySelector('.btn-delete').addEventListener('click', () => deleteTodo(todo.id));
-                    todoList.appendChild(todoItem);
-                });
+                    </div>
+                    <div class="task-actions">
+                        <button class="icon-btn complete" onclick="toggleTask('${task.id}')" title="完了/未完了">
+                            <i class="fa-solid ${task.completed ? 'fa-circle-check' : 'fa-circle'}"></i>
+                        </button>
+                        <button class="icon-btn delete" onclick="deleteTask('${task.id}')" title="削除">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                taskList.appendChild(li);
+            });
+        }
+
+        // --- カレンダー機能 ---
+        function initCalendarHeaders() {
+            const grid = document.getElementById('calendarGrid');
+            const weekDays = ['日', '月', '火', '水', '木', '金', '土'];
+            weekDays.forEach(day => {
+                const cell = document.createElement('div');
+                cell.className = 'calendar-header-cell';
+                cell.textContent = day;
+                grid.appendChild(cell);
+            });
+        }
+
+        document.getElementById('prevMonth').addEventListener('click', () => {
+            currentCalendarDate.setMonth(currentCalendarDate.getMonth() - 1);
+            updateCalendar();
+        });
+
+        document.getElementById('nextMonth').addEventListener('click', () => {
+            currentCalendarDate.setMonth(currentCalendarDate.getMonth() + 1);
+            updateCalendar();
+        });
+
+        function updateCalendar() {
+            const grid = document.getElementById('calendarGrid');
+            
+            // 既存のヘッダー以外のセルをクリア
+            const cells = grid.querySelectorAll('.calendar-cell');
+            cells.forEach(c => c.remove());
+
+            const year = currentCalendarDate.getFullYear();
+            const month = currentCalendarDate.getMonth();
+
+            document.getElementById('calendarMonthYear').textContent = `${year}年 ${month + 1}月`;
+
+            // 月の初日の曜日と総日数を取得
+            const firstDayIndex = new Date(year, month, 1).getDay();
+            const totalDays = new Date(year, month + 1, 0).getDate();
+            const prevTotalDays = new Date(year, month, 0).getDate();
+
+            // 前月の埋め合わせ
+            for (let i = firstDayIndex - 1; i >= 0; i--) {
+                createCalendarCell(year, month - 1, prevTotalDays - i, true);
             }
 
-            const todayStr = getLocalDateString();
-            const todayTodos = state.todos.filter(t => todayStr >= t.date && todayStr <= t.endDate);
-            const todayCompleted = todayTodos.filter(t => t.completed).length;
-            
-            statCompleted.textContent = state.todos.filter(t => t.completed).length;
-            statPomodoros.textContent = state.pomodoroCount;
-            
-            const percent = todayTodos.length > 0 ? Math.round((todayCompleted / todayTodos.length) * 100) : 0;
-            progressBar.style.width = `${percent}%`; 
-            progressPercent.textContent = `${percent}%`;
-            
-            const calendarEvents = state.todos.map(todo => {
-                let end = new Date(todo.endDate); end.setDate(end.getDate() + 1);
-                return { id: todo.id, title: `${'★'.repeat(todo.cost)} ${todo.text}`, start: todo.date, end: end.toISOString().split('T')[0], allDay: true, backgroundColor: todo.completed ? '#9ca3af' : '#6366f1', borderColor: todo.completed ? '#9ca3af' : '#6366f1', textColor: '#ffffff' };
-            });
-            calendar.removeAllEvents(); calendar.addEventSource(calendarEvents);
-        }
-
-        function addTodo(text, memo, date, endDate, cost) {
-            state.todos.push({ id: Date.now().toString(), text, memo, date, endDate, cost, completed: false, completedAt: null });
-            saveData();
-        }
-
-        function openEditModal(id) {
-            const todo = state.todos.find(t => t.id === id);
-            if (!todo) return;
-            state.currentEditingId = id;
-            editInput.value = todo.text;
-            editMemo.value = todo.memo || '';
-            editDate.value = todo.date;
-            editEndDate.min = todo.date;
-            editEndDate.value = todo.endDate;
-            
-            state.editingCost = todo.cost || 1;
-            updateEditCostStars(state.editingCost);
-            
-            editModal.classList.remove('hidden');
-        }
-
-        function closeEditModal() {
-            editModal.classList.add('hidden');
-            state.currentEditingId = null;
-        }
-
-        function updateEditCostStars(costValue) {
-            editCostSelector.querySelectorAll('button').forEach(b => {
-                if (parseInt(b.getAttribute('data-cost')) <= costValue) {
-                    b.classList.remove('text-gray-300'); b.classList.add('text-amber-400');
-                } else {
-                    b.classList.remove('text-amber-400'); b.classList.add('text-gray-300');
-                }
-            });
-        }
-
-        editCostSelector.querySelectorAll('button').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                state.editingCost = parseInt(e.currentTarget.getAttribute('data-cost'));
-                updateEditCostStars(state.editingCost);
-            });
-        });
-
-        btnEditSave.addEventListener('click', () => {
-            if (!editInput.value.trim()) return;
-            state.todos = state.todos.map(todo => {
-                if (todo.id === state.currentEditingId) {
-                    return {
-                        ...todo,
-                        text: editInput.value.trim(),
-                        memo: editMemo.value.trim(),
-                        cost: state.editingCost, 
-                        date: editDate.value,
-                        endDate: editEndDate.value
-                    };
-                }
-                return todo;
-            });
-            closeEditModal();
-            saveData();
-        });
-
-        btnEditCancel.addEventListener('click', closeEditModal);
-
-        function toggleTodo(id) {
-            state.todos = state.todos.map(todo => {
-                if (todo.id === id) {
-                    const isNowCompleted = !todo.completed;
-                    return { ...todo, completed: isNowCompleted, completedAt: isNowCompleted ? Date.now() : null };
-                }
-                return todo;
-            });
-            saveData();
-        }
-
-        function deleteTodo(id) {
-            if(confirm("削除しますか？")) { state.todos = state.todos.filter(todo => todo.id !== id); saveData(); }
-        }
-
-        costSelector.querySelectorAll('button').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                state.settings.currentCost = parseInt(e.currentTarget.getAttribute('data-cost'));
-                costSelector.querySelectorAll('button').forEach(b => {
-                    if (parseInt(b.getAttribute('data-cost')) <= state.settings.currentCost) { b.classList.remove('text-gray-300'); b.classList.add('text-amber-400'); }
-                    else { b.classList.remove('text-amber-400'); b.classList.add('text-gray-300'); }
-                });
-            });
-        });
-
-        function updateSortButtons(activeBtn) {
-            [sortDateBtn, sortNameBtn, sortCostBtn].forEach(btn => {
-                if (btn === activeBtn) {
-                    btn.className = "px-2 py-1 rounded bg-white text-indigo-600 font-medium shadow-sm transition";
-                } else {
-                    btn.className = "px-2 py-1 rounded text-gray-500 hover:text-gray-700 transition";
-                }
-            });
-        }
-
-        sortDateBtn.addEventListener('click', () => {
-            state.sortBy = 'date';
-            updateSortButtons(sortDateBtn);
-            render();
-        });
-
-        sortNameBtn.addEventListener('click', () => {
-            state.sortBy = 'name';
-            updateSortButtons(sortNameBtn);
-            render();
-        });
-
-        sortCostBtn.addEventListener('click', () => {
-            state.sortBy = 'cost';
-            updateSortButtons(sortCostBtn);
-            render();
-        });
-
-        todoForm.addEventListener('submit', (e) => {
-            e.preventDefault(); if (!todoInput.value.trim()) return;
-            addTodo(todoInput.value.trim(), todoMemo.value.trim(), todoDate.value, todoEndDate.value, state.settings.currentCost);
-            todoInput.value = ''; todoMemo.value = '';
-        });
-
-        btnTimerStart.addEventListener('click', () => startTimer(true)); 
-        btnTimerPause.addEventListener('click', pauseTimer); 
-        btnTimerReset.addEventListener('click', resetTimer);
-        btnTimerSkip.addEventListener('click', skipTimerMode); 
-        
-        btnSoundToggle.addEventListener('click', () => {
-            state.settings.soundOn = !state.settings.soundOn;
-            soundIcon.className = state.settings.soundOn ? "fa-solid fa-volume-high" : "fa-solid fa-volume-xmark";
-        });
-
-        function escapeHTML(str) { return str ? str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)) : ''; }
-
-        btnLogin.addEventListener('click', async () => {
-            try { await signInWithPopup(auth, provider); } catch (e) { alert("ログインに失敗しました。Firebaseの設定（承認済みドメイン）を確認してください。"); }
-        });
-        btnLogout.addEventListener('click', () => {
-            if (unsubscribeFirestore) unsubscribeFirestore();
-            signOut(auth);
-        });
-        
-        onAuthStateChanged(auth, (user) => {
-            if (user) { 
-                state.user = user; 
-                userName.textContent = user.displayName; 
-                userAvatar.src = user.photoURL; 
-                btnLogin.classList.add('hidden'); 
-                userProfile.classList.remove('hidden');
-                startRealtimeSync(); 
+            // 当月の描画
+            const today = new Date();
+            for (let i = 1; i <= totalDays; i++) {
+                const isToday = today.getFullYear() === year && today.getMonth() === month && today.getDate() === i;
+                createCalendarCell(year, month, i, false, isToday);
             }
-            else { 
-                state.user = null; 
-                btnLogin.classList.remove('hidden'); 
-                userProfile.classList.add('hidden'); 
-                if (unsubscribeFirestore) unsubscribeFirestore();
-                state.todos = JSON.parse(localStorage.getItem('studydesk_todos')) || [];
-                state.pomodoroCount = parseInt(localStorage.getItem('studydesk_pomo')) || 0;
-                cleanExpiredTodos();
-                render();
+
+            // 翌月の埋め合わせ (合計6行 = 42セルになるように調整)
+            const totalRendered = firstDayIndex + totalDays;
+            const nextMonthDays = 42 - totalRendered;
+            for (let i = 1; i <= nextMonthDays; i++) {
+                createCalendarCell(year, month + 1, i, true);
             }
-        });
-        
-        setInterval(() => { if (state.todos.some(t => t.completed)) { cleanExpiredTodos(); render(); } }, 60000);
+        }
+
+        function createCalendarCell(year, month, day, isOtherMonth, isToday = false) {
+            const grid = document.getElementById('calendarGrid');
+            const cell = document.createElement('div');
+            cell.className = `calendar-cell ${isOtherMonth ? 'other-month' : ''} ${isToday ? 'today' : ''}`;
+
+            // セルに日付ナンバーを追加
+            const dayNum = document.createElement('span');
+            dayNum.className = 'day-number';
+            dayNum.textContent = day;
+            cell.appendChild(dayNum);
+
+            // このセルの日付文字列を生成 (YYYY-MM-DD 形式)
+            const cellDate = new Date(year, month, day);
+            const dateStr = formatDateString(cellDate);
+
+            // この日付に該当するタスクを抽出して配置
+            const tasksContainer = document.createElement('div');
+            tasksContainer.className = 'calendar-tasks';
+
+            const dayTasks = tasks.filter(t => t.date === dateStr);
+            dayTasks.forEach(task => {
+                const indicator = document.createElement('div');
+                indicator.className = `calendar-task-indicator ${task.completed ? 'completed' : ''}`;
+                
+                // カレンダー上のタスク名からコスト(★や☆)を除外し、タイトルのみを表示
+                indicator.textContent = task.title;
+                
+                indicator.title = `${task.title} (コスト: ${task.cost})`;
+                indicator.onclick = () => toggleTask(task.id);
+                tasksContainer.appendChild(indicator);
+            });
+
+            cell.appendChild(tasksContainer);
+            grid.appendChild(cell);
+        }
+
+        // ユーティリティ関数
+        function formatDateString(date) {
+            const offset = date.getTimezoneOffset();
+            const adjustedDate = new Date(date.getTime() - (offset * 60 * 1000));
+            return adjustedDate.toISOString().split('T')[0];
+        }
+
+        function escapeHTML(str) {
+            return str.replace(/[&<>'"]/g, 
+                tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+            );
+        }
     </script>
 </body>
 </html>
